@@ -1,7 +1,51 @@
 services:
-  web:
-    build: .
+  # The Database (The filing cabinet for BookStack)
+  db:
+    image: mariadb:10.11
+    environment:
+      - MYSQL_ROOT_PASSWORD=bookstack
+      - MYSQL_DATABASE=bookstackapp
+      - MYSQL_USER=bookstack
+      - MYSQL_PASSWORD=bookstack
+    volumes:
+      - db_data:/var/lib/mysql
+
+  # The Library (Where staff write records)
+  bookstack:
+    image: lscr.io/linuxserver/bookstack
+    container_name: bookstack
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - APP_URL=http://localhost:8080
+      - DB_HOST=db
+      - DB_USER=bookstack
+      - DB_PASS=bookstack
+      - DB_DATABASE=bookstackapp
     ports:
-      - "5000:5000"
-  redis:
-    image: "redis:alpine"
+      - 8080:80
+    depends_on:
+      - db
+
+  # The Brain (The AI engine)
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+
+  # The Librarian (The interface for students)
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    environment:
+      - 'OLLAMA_BASE_URL=http://ollama:11434'
+    ports:
+      - 3000:8080
+    depends_on:
+      - ollama
+
+volumes:
+  db_data:
+  ollama_data:
+  open_webui:

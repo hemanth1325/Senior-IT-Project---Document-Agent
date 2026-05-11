@@ -1,4 +1,80 @@
-📚 Staff & Student AI Library Setup GuideThis guide helps you build a system where Staff upload records to BookStack, and Students ask questions using an AI (RAGFlow).🛠️ Step 1: Building the "Engine" (Docker)We will use Docker to create the "rooms" where your software lives.Open your Terminal (Command Prompt or PowerShell).Download the blueprint by typing these commands:bashgit clone https://github.com/infiniflow/ragflow.git
-cd ragflow/docker
-Use code with caution.Start the system:bashdocker compose -f docker-compose.yml up -d
-Use code with caution.Open the UI: Open your web browser and go to: http://localhost🧑‍🏫 Step 2: Staff Setup (The Uploaders)Staff are the "Librarians." They manage the data.Create an Admin Account: The first person to sign up at http://localhost becomes the Boss (Admin).Create a Knowledge Base:Go to the Dataset tab.Click Create Dataset and name it "School Records."Upload Documents:Inside your dataset, click Upload.Add your PDFs or records here.Wait for Parsing: The AI will "read" the pages. When the status says "Success," the AI is ready!🎓 Step 3: Student Setup (The Questioners)Students can only ask questions; they cannot delete or add files.Student Accounts: Have students sign up on the same website.Sharing the Data:In your Dataset settings, set the permission to Team or Public within your organization.Asking Questions:Students go to the Chat tab.They click + New Chat and select the "School Records" dataset.They type a question (e.g., "What is the deadline for the project?").The AI will answer using only the data the staff uploaded.🔗 Step 4: Connecting BookStack to the AISince your data lives in BookStack, you need to get it into RAGFlow.Method A: The Easy Way (Manual)Step 1: In BookStack, go to your page and click Export > PDF.Step 2: Drag that PDF into the RAGFlow Dataset tab.Method B: The Pro Way (Automatic)You can use the API Connector.BookStack API: Gives the data.RAGFlow API: Takes the data.Result: When a teacher saves a page in BookStack, it automatically appears in the AI's brain.🧠 Step 5: Make it 100% Free (Local Brain)To avoid paying for OpenAI/ChatGPT, connect it to Ollama.Install Ollama on your computer.Download a Model: Run ollama run llama3 in your terminal.Link them: In RAGFlow, go to Settings > Model Providers and select Ollama. Now the "thinking" happens on your own computer for free!✅ Su
+## 📚 Staff & Student AI Library Setup Guide
+This guide helps you build a system where Staff upload records to BookStack, and Students ask questions using an AI (RAGFlow).
+------------------------------
+## 🛠️ Step 1: Building the "Engine" (Docker)
+We will use Docker to create the "rooms" where your software lives.
+
+   1. Open your Terminal (Command Prompt or PowerShell).
+   2. Download the blueprint by typing these commands:
+   
+   git clone https://github.com/infiniflow/ragflow.git
+   cd ragflow/docker
+   
+   3. Start the system:
+   
+   docker compose -f docker-compose.yml up -d
+   
+   4. Open the UI: Open your web browser and go to: http://localhost
+
+------------------------------
+## 🧑‍🏫 Step 2: Staff Setup (The Uploaders)
+Staff are the "Librarians." They manage the data.
+
+   1. Create an Admin Account: The first person to sign up at http://localhost becomes the Boss (Admin).
+   2. Create a Knowledge Base:
+   * Go to the Dataset tab.
+      * Click Create Dataset and name it "School Records."
+   3. Upload Documents:
+   * Inside your dataset, click Upload.
+      * Add your PDFs or records here.
+      * Wait for Parsing: The AI will "read" the pages. When the status says "Success," the AI is ready!
+   
+------------------------------
+## 🎓 Step 3: Student Setup (The Questioners)
+Students can only ask questions; they cannot delete or add files.
+
+   1. Student Accounts: Have students sign up on the same website.
+   2. Sharing the Data:
+   * In your Dataset settings, set the permission to Team or Public within your organization.
+   3. Asking Questions:
+   * Students go to the Chat tab.
+      * They click + New Chat and select the "School Records" dataset.
+      * They type a question (e.g., "What is the deadline for the project?").
+      * The AI will answer using only the data the staff uploaded.
+   
+------------------------------
+## 🔗 Step 4: Connecting BookStack to the AI
+Since your data lives in BookStack, you need to get it into RAGFlow.
+## Method A: The Easy Way (Manual)
+
+* Step 1: In BookStack, go to your page and click Export > PDF.
+* Step 2: Drag that PDF into the RAGFlow Dataset tab.
+
+## Method B: The Pro Way (Automatic)
+You can use the API Connector.
+
+* BookStack API: Gives the data.
+* RAGFlow API: Takes the data.
+* Result: When a teacher saves a page in BookStack, it automatically appears in the AI's brain.
+
+------------------------------
+## 🧠 Step 5: Make it 100% Free (Local Brain)
+To avoid paying for OpenAI/ChatGPT, connect it to Ollama.
+
+   1. Install Ollama on your computer.
+   2. Download a Model: Run ollama run llama3 in your terminal.
+   3. Link them: In RAGFlow, go to Settings > Model Providers and select Ollama. Now the "thinking" happens on your own computer for free!
+
+------------------------------
+## ✅ Summary of Roles
+
+| Feature | Staff (Admin) | Student (User) |
+|---|---|---|
+| Upload PDFs | Yes | No |
+| Delete Data | Yes | No |
+| Ask Questions | Yes | Yes |
+| See Citations | Yes | Yes (Shows them which page the info came from) |
+
+------------------------------
+
+

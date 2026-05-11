@@ -1,7 +1,8 @@
 services:
-  # The Database (The filing cabinet for BookStack)
+  # The Database
   db:
     image: mariadb:10.11
+    container_name: bookstack-db
     environment:
       - MYSQL_ROOT_PASSWORD=bookstack
       - MYSQL_DATABASE=bookstackapp
@@ -9,8 +10,11 @@ services:
       - MYSQL_PASSWORD=bookstack
     volumes:
       - db_data:/var/lib/mysql
+    networks:
+      - bookstack-net
+    restart: unless-stopped
 
-  # The Library (Where staff write records)
+  # The Library
   bookstack:
     image: lscr.io/linuxserver/bookstack
     container_name: bookstack
@@ -18,34 +22,66 @@ services:
       - PUID=1000
       - PGID=1000
       - APP_URL=http://localhost:8080
+      - APP_KEY=base64:dc45WmyOdm4x9JC5RDIOvmeYVhzbj3k/fg/rNWLOuYs=
       - DB_HOST=db
-      - DB_USER=bookstack
-      - DB_PASS=bookstack
+      - DB_PORT=3306
       - DB_DATABASE=bookstackapp
+      - DB_USERNAME=bookstack
+      - DB_PASSWORD=bookstack
+
     ports:
       - 8080:80
     depends_on:
       - db
+    networks:
+      - bookstack-net
+    restart: unless-stopped
 
-  # The Brain (The AI engine)
+  # The Brain (AI Engine)
   ollama:
-    image: ollama/ollama
+    image: ollama/ollama:latest
     container_name: ollama
+    ports:
+      - 11434:11434
     volumes:
       - ollama_data:/root/.ollama
-
-  # The Librarian (The interface for students)
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: open-webui
+    networks:
+      - bookstack-net
+    restart: unless-stopped
+  langflow:
+    image: langflowai/langflow:latest
+    container_name: langflow
     environment:
-      - 'OLLAMA_BASE_URL=http://ollama:11434'
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - LANGFLOW_SKIP_AUTH_AUTO_LOGIN = True
     ports:
-      - 3000:8080
+      - 7860:7860
     depends_on:
       - ollama
+    networks:
+      - bookstack-net
+    restart: unless-stopped
+
+  # The Librarian (Chat Interface)
+  # open-webui:
+  #   image: ghcr.io/open-webui/open-webui:main
+  #   container_name: open-webui
+  #   environment:
+  #     - OLLAMA_BASE_URL=http://ollama:11434
+  #   ports:
+  #     - 3000:8080
+  #   depends_on:
+  #     - ollama
+  #   networks:
+  #     - bookstack-net
+  #   restart: unless-stopped
 
 volumes:
   db_data:
   ollama_data:
-  open_webui:
+
+  # webui_data:
+
+networks:
+  bookstack-net:
+    driver: bridge

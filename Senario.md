@@ -1,9 +1,0 @@
-#Senario-1
-
-#The Midnight Deadline Crisis
-
-It is 11:30 PM, and Alex is sitting in the library, staring at two different versions of a lab report template. Earlier today, Dr. Jane Smith mentioned a formatting change during a lecture, but she only sent the update via a quick email that Alex now can't find in his overflowing inbox. The original PDF sitting in the course's shared folder still shows the old requirements. Because the information is scattered and static, Alex is stuck in a gap of confusion, worried he will lose marks for using the wrong layout. He opens the university’s new AI-powered platform and asks the chatbot for the latest report criteria. The system, acting as the single Source of Truth, instantly pulls the live edit Dr. Smith made to the digital "Book" just an hour ago. Alex sees the correct template immediately and finishes his work with confidence, while Dr. Smith sleeps soundly, knowing she won't wake up to fifty emails asking the same question.
-
-#senario-2
-
-Dr. Jane Smith is sitting in her office on a Tuesday morning, realizing she needs to move the date of next week’s midterm due to an upcoming campus event. In the past, this small change would trigger a mountain of work: she would have to edit her Word document, save it as a new PDF, upload it to a messy folder system, and then send a mass email that many students would inevitably miss. This creates a "Tech Fatigue" gap where the professor spends more time on admin than on actual teaching. However, with the new platform, she simply opens the "Source of Truth" page for her course and changes the date in one place. The resolution is instant; the system automatically updates the calendar for every student and the AI chatbot begins giving the new date to anyone who asks. Dr. Smith finishes the task in thirty seconds and gets back to her research, knowing the entire department is now perfectly synced.

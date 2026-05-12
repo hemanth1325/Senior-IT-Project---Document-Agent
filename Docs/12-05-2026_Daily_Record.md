@@ -1,3 +1,11 @@
+# Hemanth
+Today, I worked on building an AI workflow using Langflow. In this session, I created a basic Retrieval-Augmented Generation (RAG) system to understand how AI can retrieve information from external data and generate meaningful responses. For the implementation, I used ChromaDB as the vector database and integrated LiteLLM for handling model interactions and response generation.
+
+The workflow included components such as a URL parser, a prompt template, and a simple URL-based data ingestion pipeline. The scraped web content was processed, converted into embeddings, and stored inside ChromaDB for retrieval. After retrieving the relevant context, LiteLLM was used to generate responses based on the retrieved information. This helped me understand how different components in a RAG pipeline work together.
+
+As a practical use case, I tested the system using content from the Malmö University (MDH) website. The goal was to answer the question, “Where is MDH located?” The system successfully scraped the website content, retrieved the relevant information, and generated an accurate response. Through this task, I gained practical experience in building AI workflows, vector database integration, and implementing a basic question-answering system using Langflow.
+
+
 # vaman 
 
 Today, I worked on building an AI workflow using Langflow. In this session, I created a basic Retrieval-Augmented Generation (RAG) system.

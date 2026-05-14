@@ -15,3 +15,10 @@ For the implementation, I used ChromaDB as the vector database and integrated Li
 The workflow included components such as a URL parser, a prompt template, and LiteLLM integration to process and generate responses.
 
 As a practical use case, I tested the system by scraping information from the MDH website. The goal was to retrieve and answer the question: “Where is MDH located?” The system successfully processed the web content and generated a relevant response based on the retrieved data.
+
+
+
+# Darshak
+Today, I worked on building a basic RAG (Retrieval-Augmented Generation) system using Langflow. I used ChromaDB for storing embeddings and LiteLLM for generating responses. The workflow included URL parsing, web scraping, embedding generation, and data retrieval.
+
+As a test case, I used content from the Media Design University website to answer questions like “Where is MDH located?” and “Who is the CEO of MDH?”. This project helped me understand how RAG pipelines, vector databases, and AI workflows work together.

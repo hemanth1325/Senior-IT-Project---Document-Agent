@@ -60,8 +60,9 @@ services:
       - ollama
     networks:
       - bookstack-net
+    volumes:
+      - ./langflow-data:/app/langflow
     restart: unless-stopped
-
   # The Librarian (Chat Interface)
   # open-webui:
   #   image: ghcr.io/open-webui/open-webui:main

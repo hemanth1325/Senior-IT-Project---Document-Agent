@@ -1,0 +1,7 @@
+# vaman 
+
+Today, I learned the fundamentals of text embeddings and how natural language is transformed into high-dimensional numerical vectors that capture semantic meaning. I studied how similar words or sentences are mapped closer together in vector space, while dissimilar ones are placed farther apart. This helped me understand the core idea behind semantic representation in NLP systems and how embeddings form the backbone of modern search and retrieval systems.
+
+I also explored vector similarity metrics, mainly cosine similarity and Euclidean distance. I understood that cosine similarity is widely used in NLP because it measures the angle between vectors and is less sensitive to magnitude, making it ideal for semantic comparison. Euclidean distance, on the other hand, measures straight-line distance and is more sensitive to scale differences. Alongside this, I was introduced to Hugging Face embedding models, such as Sentence Transformers, which are used to convert text into embeddings efficiently for tasks like semantic search and clustering.
+
+In addition, I implemented a LangFlow pipeline where I scraped content from the MDH website, generated embeddings, and processed the data for downstream use. I also worked on duplicate removal logic using vector similarity thresholds to ensure only unique and relevant content is retained. Finally, I connected this with prompting in the workflow, which helped me understand how structured LLM pipelines can combine data extraction, embedding-based filtering, and generation in a single flow.

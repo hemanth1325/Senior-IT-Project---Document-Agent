@@ -1,3 +1,11 @@
+# Hemanth
+Today, I learned the basics of text embeddings and how natural language is converted into high-dimensional numerical vectors that represent semantic meaning. I studied how similar words and sentences are positioned closer together in vector space, while unrelated content is placed farther apart. This helped me understand the foundation of semantic representation in NLP systems and how embeddings play an important role in modern search, retrieval, and recommendation systems.
+
+I also explored vector similarity methods, mainly cosine similarity and Euclidean distance. I understood that cosine similarity is commonly used in NLP because it measures the angle between vectors and is less affected by magnitude, making it useful for semantic comparison. Euclidean distance, however, calculates the direct distance between vectors and is more sensitive to scale differences. In addition, I explored Hugging Face embedding models such as Sentence Transformers, which are widely used to generate embeddings efficiently for semantic search, clustering, and document similarity tasks.
+
+Furthermore, I implemented a LangFlow pipeline where I scraped content from the MDH website, generated embeddings, and processed the extracted data for downstream tasks. I also developed duplicate removal logic using vector similarity thresholds to retain only unique and relevant information. During the implementation, I initially received incorrect results, but after analyzing the workflow carefully, I identified the error in the LangFlow pipeline and fixed it successfully. This practical experience helped me understand how data extraction, embedding-based filtering, and prompting can be integrated into a complete LLM workflow.
+
+
 # vaman 
 
 Today, I learned the fundamentals of text embeddings and how natural language is transformed into high-dimensional numerical vectors that capture semantic meaning. I studied how similar words or sentences are mapped closer together in vector space, while dissimilar ones are placed farther apart. This helped me understand the core idea behind semantic representation in NLP systems and how embeddings form the backbone of modern search and retrieval systems.

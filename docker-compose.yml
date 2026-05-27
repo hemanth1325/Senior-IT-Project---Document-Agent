@@ -48,7 +48,7 @@ services:
     networks:
       - bookstack-net
     restart: unless-stopped
-    gpus: all
+    # gpus: all
   langflow:
     image: langflowai/langflow:latest
     container_name: langflow

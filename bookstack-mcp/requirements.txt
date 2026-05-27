@@ -1,0 +1,6 @@
+mcp[cli]
+requests
+beautifulsoup4
+starlette
+uvicorn
+pypdf

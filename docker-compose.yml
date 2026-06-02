@@ -64,6 +64,10 @@ services:
     volumes:
       - ./langflow-data:/app/langflow
     restart: unless-stopped
+    labels:
+      caddy : langflow.mdhbookstack.duckdns.org
+      caddy.reverse_proxy: "{{upstreams 7860}}"
+ 
   # Custom MCP Server for BookStack
   bookstack-mcp:
     build:

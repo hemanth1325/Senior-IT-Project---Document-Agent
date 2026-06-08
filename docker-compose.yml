@@ -112,3 +112,6 @@ services:
 networks:
   bookstack-net:
     driver: bridge
+  caddy:
+    external: true
+

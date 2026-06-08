@@ -1,64 +1,64 @@
 services:
   # The Database
-  db:
-    image: mariadb:10.11
-    container_name: bookstack-db
-    environment:
-      - MYSQL_ROOT_PASSWORD=bookstack
-      - MYSQL_DATABASE=bookstackapp
-      - MYSQL_USER=bookstack
-      - MYSQL_PASSWORD=bookstack
-    volumes:
-      - db_data:/var/lib/mysql
-    networks:
-      - bookstack-net
-    restart: unless-stopped
+  # db:
+  #   image: mariadb:10.11
+  #   container_name: bookstack-db
+  #   environment:
+  #     - MYSQL_ROOT_PASSWORD=bookstack
+  #     - MYSQL_DATABASE=bookstackapp
+  #     - MYSQL_USER=bookstack
+  #     - MYSQL_PASSWORD=bookstack
+  #   volumes:
+  #     - db_data:/var/lib/mysql
+  #   networks:
+  #     - bookstack-net
+  #   restart: unless-stopped
 
-  # The Library
-  bookstack:
-    image: lscr.io/linuxserver/bookstack
-    container_name: bookstack
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - APP_URL=http://localhost:8080
-      - APP_KEY=base64:dc45WmyOdm4x9JC5RDIOvmeYVhzbj3k/fg/rNWLOuYs=
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_DATABASE=bookstackapp
-      - DB_USERNAME=bookstack
-      - DB_PASSWORD=bookstack
+  # # The Library
+  # bookstack:
+  #   image: lscr.io/linuxserver/bookstack
+  #   container_name: bookstack
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - APP_URL=http://localhost:8080
+  #     - APP_KEY=base64:dc45WmyOdm4x9JC5RDIOvmeYVhzbj3k/fg/rNWLOuYs=
+  #     - DB_HOST=db
+  #     - DB_PORT=3306
+  #     - DB_DATABASE=bookstackapp
+  #     - DB_USERNAME=bookstack
+  #     - DB_PASSWORD=bookstack
 
-    ports:
-      - 8080:80
-    depends_on:
-      - db
-    networks:
-      - bookstack-net
-    restart: unless-stopped
+  #   ports:
+  #     - 8080:80
+  #   depends_on:
+  #     - db
+  #   networks:
+  #     - bookstack-net
+  #   restart: unless-stopped
 
-  # The Brain (AI Engine)
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "11435:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - bookstack-net
-    restart: unless-stopped
+  # # The Brain (AI Engine)
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: ollama
+  #   ports:
+  #     - "11435:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   networks:
+  #     - bookstack-net
+  #   restart: unless-stopped
     # gpus: all
   langflow:
     image: langflowai/langflow:latest
     container_name: langflow
     environment:
-      - OLLAMA_BASE_URL=http://ollama:11434
+      # - OLLAMA_BASE_URL=http://ollama:11434
       - LANGFLOW_SKIP_AUTH_AUTO_LOGIN=True
     ports:
       - 7860:7860
-    depends_on:
-      - ollama
+    # depends_on:
+    #   - ollama
     networks:
       - bookstack-net
     volumes:
@@ -69,42 +69,42 @@ services:
       caddy.reverse_proxy: "{{upstreams 7860}}"
  
   # Custom MCP Server for BookStack
-  bookstack-mcp:
-    build:
-      context: ./bookstack-mcp
-      dockerfile: Dockerfile
-    container_name: bookstack-mcp
-    environment:
-      - BOOKSTACK_BASE_URL=http://bookstack
-      - BOOKSTACK_TOKEN_ID=IGRxrHRWDlGHLC4tHy9AxNfl0WqKp8nA
-      - BOOKSTACK_TOKEN_SECRET=oJCKLcTzNGHCZVFaZ2FvJt7XPXxMq9BR
-      - MCP_HOST=0.0.0.0
-      - MCP_PORT=8000
-    ports:
-      - "8001:8000"
-    depends_on:
-      - bookstack
-    networks:
-      - bookstack-net
-    restart: unless-stopped
+#   bookstack-mcp:
+#     build:
+#       context: ./bookstack-mcp
+#       dockerfile: Dockerfile
+#     container_name: bookstack-mcp
+#     environment:
+#       - BOOKSTACK_BASE_URL=http://bookstack
+#       - BOOKSTACK_TOKEN_ID=IGRxrHRWDlGHLC4tHy9AxNfl0WqKp8nA
+#       - BOOKSTACK_TOKEN_SECRET=oJCKLcTzNGHCZVFaZ2FvJt7XPXxMq9BR
+#       - MCP_HOST=0.0.0.0
+#       - MCP_PORT=8000
+#     ports:
+#       - "8001:8000"
+#     depends_on:
+#       - bookstack
+#     networks:
+#       - bookstack-net
+#     restart: unless-stopped
 
-  # The Librarian (Chat Interface)
-  # open-webui:
-  #   image: ghcr.io/open-webui/open-webui:main
-  #   container_name: open-webui
-  #   environment:
-  #     - OLLAMA_BASE_URL=http://ollama:11434
-  #   ports:
-  #     - 3000:8080
-  #   depends_on:
-  #     - ollama
-  #   networks:
-  #     - bookstack-net
-  #   restart: unless-stopped
+#   # The Librarian (Chat Interface)
+#   # open-webui:
+#   #   image: ghcr.io/open-webui/open-webui:main
+#   #   container_name: open-webui
+#   #   environment:
+#   #     - OLLAMA_BASE_URL=http://ollama:11434
+#   #   ports:
+#   #     - 3000:8080
+#   #   depends_on:
+#   #     - ollama
+#   #   networks:
+#   #     - bookstack-net
+#   #   restart: unless-stopped
 
-volumes:
-  db_data:
-  ollama_data:
+# volumes:
+#   db_data:
+#   ollama_data:
 
   # webui_data:
 

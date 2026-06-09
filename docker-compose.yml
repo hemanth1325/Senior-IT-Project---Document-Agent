@@ -52,11 +52,18 @@ services:
   langflow:
     image: langflowai/langflow:latest
     container_name: langflow
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+
     environment:
+      - DO_NOT_TRACK = True
       # - OLLAMA_BASE_URL=http://ollama:11434
-      - LANGFLOW_SKIP_AUTH_AUTO_LOGIN=True
-    ports:
-      - 7860:7860
+      # - LANGFLOW_SKIP_AUTH_AUTO_LOGIN=True
+      - LANGFLOW_CONFIG_DIR =  /app/langflow
+      - LANGFLOW_DATABASE_URL=postgresql://langflow:langflow@postgres:5432/langflow
+    
     # depends_on:
     #   - ollama
     networks:
@@ -68,7 +75,27 @@ services:
     labels:
       caddy : langflow.mdhbookstack.duckdns.org
       caddy.reverse_proxy: "{{upstreams 7860}}"
- 
+  
+
+
+  postgres:
+    # Pinned to a specific Debian base (trixie) so the postgres:16 tag does not
+    # silently roll its OS underneath us — that roll causes a glibc collation
+    # version mismatch warning on existing volumes. Matches the langflow image
+    # base. See https://github.com/langflow-ai/langflow/issues/9608
+    image: postgres:16-trixie
+    environment:
+      POSTGRES_USER: langflow
+      POSTGRES_PASSWORD: langflow
+      POSTGRES_DB: langflow
+    # ports:
+      # - "5432:5432"
+    volumes:
+      - langflow-postgres:/var/lib/postgresql/data
+
+volumes:
+  langflow-postgres:
+
   # Custom MCP Server for BookStack
 #   bookstack-mcp:
 #     build:

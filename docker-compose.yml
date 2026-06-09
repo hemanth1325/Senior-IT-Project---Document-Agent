@@ -58,10 +58,10 @@ services:
       - postgres
 
     environment:
-      - DO_NOT_TRACK = True
+      - DO_NOT_TRACK=True
       # - OLLAMA_BASE_URL=http://ollama:11434
       # - LANGFLOW_SKIP_AUTH_AUTO_LOGIN=True
-      - LANGFLOW_CONFIG_DIR =  /app/langflow
+      - LANGFLOW_CONFIG_DIR=/app/langflow
       - LANGFLOW_DATABASE_URL=postgresql://langflow:langflow@postgres:5432/langflow
     
     # depends_on:

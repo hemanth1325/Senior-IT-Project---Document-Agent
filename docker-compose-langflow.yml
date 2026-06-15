@@ -1,0 +1,46 @@
+services:
+  langflow:
+    image: langflowai/langflow:latest
+    container_name: langflow
+    environment:
+      - LANGFLOW_CONFIG_DIR=/app/langflow
+      - LANGFLOW_DATABASE_URL=postgresql://langflow:langflow@postgres:5432/langflow
+      - DO_NOT_TRACK=True
+      - LANGFLOW_SECRET_KEY=${LANGFLOW_SECRET_KEY}
+    volumes:
+      - langflow-data:/app/langflow
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    networks:
+      - langflow-net
+      - caddy
+    labels:
+      caddy: langflow.yourdomain.duckdns.org
+      caddy.reverse_proxy: "{{upstreams 7860}}"
+
+  postgres:
+    image: postgres:16-trixie
+    environment:
+      POSTGRES_USER: langflow
+      POSTGRES_PASSWORD: langflow
+      POSTGRES_DB: langflow
+    networks:
+      - langflow-net
+
+    volumes:
+      - langflow-postgres:/var/lib/postgresql/data
+
+volumes:
+  langflow-data:
+  langflow-postgres:
+
+
+networks:
+  langflow-net:
+    driver: bridge
+  caddy:
+    external: true
+ 

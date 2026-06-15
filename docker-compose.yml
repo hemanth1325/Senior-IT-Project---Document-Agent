@@ -30,28 +30,31 @@ services:
       - DB_USERNAME=bookstack
       - DB_PASSWORD=bookstack
 
-    ports:
-      - 8080:80
+    # ports:
+    #   - 8080:80
     depends_on:
       - db
     networks:
       - bookstack-net
       - caddy
+    labels:
+      caddy: langflow.mdhbookstack.duckdns.org
+      caddy.reverse_proxy: "{{upstreams 7860}}"
     restart: unless-stopped
 
   # # The Brain (AI Engine)
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
-    ports:
-      - "11435:11434"
+    # ports:
+    #   - "11435:11434"
     volumes:
       - ollama_data:/root/.ollama
     networks:
       - bookstack-net
       - caddy
     restart: unless-stopped
-    gpus: all
+    # gpus: all
   # langflow:
   #   image: langflowai/langflow:latest
   #   container_name: langflow

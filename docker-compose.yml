@@ -22,7 +22,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - APP_URL=http://localhost:8080
+      - APP_URL=https://mdhbookstack.duckdns.org
       - APP_KEY=base64:dc45WmyOdm4x9JC5RDIOvmeYVhzbj3k/fg/rNWLOuYs=
       - DB_HOST=db
       - DB_PORT=3306
@@ -39,7 +39,7 @@ services:
       - caddy
     labels:
       caddy: mdhbookstack.duckdns.org
-      caddy.reverse_proxy: "{{upstreams 7860}}"
+      caddy.reverse_proxy: "{{upstreams 80}}"
     restart: unless-stopped
 
   # # The Brain (AI Engine)

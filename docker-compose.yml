@@ -136,9 +136,9 @@ services:
 #   #     - bookstack-net
 #   #   restart: unless-stopped
 
-# volumes:
-#   db_data:
-#   ollama_data:
+volumes:
+  db_data:
+  ollama_data:
 
   # webui_data:
 

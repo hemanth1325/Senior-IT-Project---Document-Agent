@@ -43,4 +43,6 @@ networks:
     driver: bridge
   caddy:
     external: true
+  ai-net:
+    external: true
  

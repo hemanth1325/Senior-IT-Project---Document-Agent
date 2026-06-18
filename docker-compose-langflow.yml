@@ -17,6 +17,7 @@ services:
     networks:
       - langflow-net
       - caddy
+      - ai-net
     labels:
       caddy: langflow.mdhbookstack.duckdns.org
       caddy.reverse_proxy: "{{upstreams 7860}}"

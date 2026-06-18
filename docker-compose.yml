@@ -102,7 +102,7 @@ services:
 # volumes:
   # langflow-postgres:
 
-  Custom MCP Server for BookStack
+  # Custom MCP Server for BookStack
   bookstack-mcp:
     build:
       context: ./bookstack-mcp

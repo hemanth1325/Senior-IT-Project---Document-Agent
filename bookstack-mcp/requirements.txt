@@ -1,6 +1,6 @@
-mcp[cli]
+mcp
+uvicorn[standard]
+starlette
 requests
 beautifulsoup4
-starlette
-uvicorn
 pypdf

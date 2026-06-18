@@ -24,7 +24,7 @@ MCP_PORT = int(os.getenv("MCP_PORT", "8000"))
 
 
 mcp = FastMCP(
-    name="BookStack MCP Server",
+    name="MDH BookStack MCP Server",
     stateless_http=True,
     json_response=True,
     transport_security=TransportSecuritySettings(
@@ -32,6 +32,7 @@ mcp = FastMCP(
         allowed_hosts=[
             "localhost:*",
             "127.0.0.1:*",
+            "bookstack-mcp",
             "bookstack-mcp:*",
             "bookstack-mcp:8000",
         ],
@@ -143,33 +144,6 @@ def list_attachments_for_page_internal(page_id: int) -> list[dict[str, Any]]:
             filtered_attachments.append(attachment)
             continue
 
-    if filtered_attachments:
-        return filtered_attachments
-
-    all_result = call_bookstack_api(
-        "/api/attachments",
-        {
-            "count": 500,
-        },
-    )
-
-    all_attachments = all_result.get("data", [])
-
-    for attachment in all_attachments:
-        uploaded_to = attachment.get("uploaded_to")
-
-        if isinstance(uploaded_to, int) and uploaded_to == page_id:
-            filtered_attachments.append(attachment)
-            continue
-
-        if isinstance(uploaded_to, dict) and uploaded_to.get("id") == page_id:
-            filtered_attachments.append(attachment)
-            continue
-
-        if str(uploaded_to) == str(page_id):
-            filtered_attachments.append(attachment)
-            continue
-
     return filtered_attachments
 
 
@@ -197,7 +171,9 @@ def extract_pdf_text(file_bytes: bytes) -> str:
         page_text = pdf_page.extract_text() or ""
 
         if page_text.strip():
-            text_parts.append(f"\n--- PDF Page {page_index} ---\n{page_text.strip()}")
+            text_parts.append(
+                f"\n--- PDF Page {page_index} ---\n{page_text.strip()}"
+            )
 
     return "\n".join(text_parts).strip()
 
@@ -248,7 +224,9 @@ def extract_attachment_text(attachment_id: int) -> dict[str, Any]:
     }
 
 
-def build_page_text_with_attachments(page: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+def build_page_text_with_attachments(
+    page: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]]]:
     page_id = page.get("id")
     html = page.get("html") or ""
 
@@ -280,6 +258,27 @@ def build_page_text_with_attachments(page: dict[str, Any]) -> tuple[str, list[di
             )
 
     return page_text.strip(), extracted_attachments
+
+
+def format_page_for_rag(page: dict[str, Any]) -> str:
+    page_name = page.get("name") or "Untitled Page"
+    page_id = page.get("id")
+    page_url = page.get("url") or ""
+    updated_at = page.get("updated_at") or ""
+    page_text = page.get("text") or ""
+
+    return "\n".join(
+        [
+            "==============================",
+            f"PAGE TITLE: {page_name}",
+            f"PAGE ID: {page_id}",
+            f"PAGE URL: {page_url}",
+            f"UPDATED AT: {updated_at}",
+            "CONTENT:",
+            page_text,
+            "==============================",
+        ]
+    )
 
 
 @mcp.tool()
@@ -323,36 +322,12 @@ def list_pages(count: int = 20, offset: int = 0) -> dict[str, Any]:
 
 
 @mcp.tool()
-def list_page_attachments(page_id: int) -> dict[str, Any]:
-    """
-    List all attachments uploaded to a specific BookStack page.
-    """
-    attachments = list_attachments_for_page_internal(page_id)
-
-    return {
-        "page_id": page_id,
-        "total_attachments": len(attachments),
-        "attachments": attachments,
-    }
-
-
-@mcp.tool()
-def get_attachment_text(attachment_id: int) -> dict[str, Any]:
-    """
-    Extract readable text from a BookStack attachment.
-
-    PDF, TXT, MD, CSV, JSON, XML, and HTML are supported.
-    """
-    return extract_attachment_text(attachment_id)
-
-
-@mcp.tool()
 def get_page(page_id: int, include_attachments: bool = True) -> dict[str, Any]:
     """
     Get one BookStack page by page ID.
 
-    If include_attachments is true, PDF/text attachment content is extracted
-    and added to the page text.
+    If include_attachments is true, supported attachment text is added
+    to the returned page text.
     """
     page = call_bookstack_api(f"/api/pages/{page_id}")
 
@@ -373,15 +348,34 @@ def get_page(page_id: int, include_attachments: bool = True) -> dict[str, Any]:
         "updated_at": page.get("updated_at"),
         "text": text,
         "attachments": attachments,
-        "markdown": page.get("markdown"),
-        "html": page.get("html"),
+    }
+
+
+@mcp.tool()
+def get_page_as_rag_text(
+    page_id: int,
+    include_attachments: bool = True,
+) -> dict[str, Any]:
+    """
+    Get one BookStack page as clean text for Langflow RAG ingestion.
+    """
+    page = get_page(
+        page_id=page_id,
+        include_attachments=include_attachments,
+    )
+
+    return {
+        "page_id": page.get("id"),
+        "page_name": page.get("name"),
+        "page_url": page.get("url"),
+        "rag_text": format_page_for_rag(page),
     }
 
 
 @mcp.tool()
 def search_bookstack(query: str, count: int = 10) -> dict[str, Any]:
     """
-    Search BookStack content.
+    Search BookStack content using the BookStack search API.
     """
     if not query.strip():
         raise ValueError("query cannot be empty")
@@ -400,12 +394,41 @@ def search_bookstack(query: str, count: int = 10) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_all_pages(max_pages: int = 200, include_attachments: bool = True) -> dict[str, Any]:
+def list_page_attachments(page_id: int) -> dict[str, Any]:
+    """
+    List all attachments uploaded to a specific BookStack page.
+    """
+    attachments = list_attachments_for_page_internal(page_id)
+
+    return {
+        "page_id": page_id,
+        "total_attachments": len(attachments),
+        "attachments": attachments,
+    }
+
+
+@mcp.tool()
+def get_attachment_text(attachment_id: int) -> dict[str, Any]:
+    """
+    Extract readable text from a BookStack attachment.
+
+    Supported attachment types:
+    PDF, TXT, MD, CSV, JSON, XML, HTML.
+    """
+    return extract_attachment_text(attachment_id)
+
+
+@mcp.tool()
+def get_all_pages(
+    max_pages: int = 200,
+    include_attachments: bool = True,
+) -> dict[str, Any]:
     """
     Get all BookStack pages with clean text.
 
-    If include_attachments is true, PDF/text attachment content is also extracted.
-    This is useful for indexing BookStack pages and attachments into ChromaDB.
+    This returns structured page data.
+    Use get_all_pages_as_rag_text when you want one plain text block
+    for Langflow RAG ingestion.
     """
     max_pages = max(1, min(max_pages, 500))
 
@@ -436,28 +459,12 @@ def get_all_pages(max_pages: int = 200, include_attachments: bool = True) -> dic
             if page_id is None:
                 continue
 
-            full_page = call_bookstack_api(f"/api/pages/{page_id}")
-
-            if include_attachments:
-                text, attachments = build_page_text_with_attachments(full_page)
-            else:
-                text = html_to_clean_text(full_page.get("html") or "")
-                attachments = []
-
-            collected_pages.append(
-                {
-                    "id": full_page.get("id"),
-                    "name": full_page.get("name"),
-                    "slug": full_page.get("slug"),
-                    "book_id": full_page.get("book_id"),
-                    "chapter_id": full_page.get("chapter_id"),
-                    "url": full_page.get("url"),
-                    "created_at": full_page.get("created_at"),
-                    "updated_at": full_page.get("updated_at"),
-                    "text": text,
-                    "attachments": attachments,
-                }
+            full_page = get_page(
+                page_id=int(page_id),
+                include_attachments=include_attachments,
             )
+
+            collected_pages.append(full_page)
 
         offset += batch_size
 
@@ -465,6 +472,36 @@ def get_all_pages(max_pages: int = 200, include_attachments: bool = True) -> dic
         "total_collected": len(collected_pages),
         "include_attachments": include_attachments,
         "pages": collected_pages,
+    }
+
+
+@mcp.tool()
+def get_all_pages_as_rag_text(
+    max_pages: int = 200,
+    include_attachments: bool = True,
+) -> dict[str, Any]:
+    """
+    Get all BookStack pages as one clean RAG text block.
+
+    This is the easiest tool to use in Langflow before Split Text,
+    Embeddings, and ChromaDB.
+    """
+    result = get_all_pages(
+        max_pages=max_pages,
+        include_attachments=include_attachments,
+    )
+
+    pages = result.get("pages", [])
+
+    rag_text_parts = []
+
+    for page in pages:
+        rag_text_parts.append(format_page_for_rag(page))
+
+    return {
+        "total_pages": len(pages),
+        "include_attachments": include_attachments,
+        "rag_text": "\n\n".join(rag_text_parts),
     }
 
 

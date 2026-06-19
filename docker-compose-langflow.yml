@@ -7,6 +7,8 @@ services:
       - LANGFLOW_DATABASE_URL=postgresql://langflow:langflow@postgres:5432/langflow
       - DO_NOT_TRACK=True
       - LANGFLOW_SECRET_KEY=${LANGFLOW_SECRET_KEY}
+      - LANGFLOW_API_KEY_SOURCE=${LANGFLOW_API_KEY_SOURCE}
+      - LANGFLOW_API_KEY=${LANGFLOW_API_KEY}
     volumes:
       - langflow-data:/app/langflow
     restart: unless-stopped

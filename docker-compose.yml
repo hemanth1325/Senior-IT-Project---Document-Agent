@@ -29,6 +29,16 @@ services:
       - DB_DATABASE=bookstackapp
       - DB_USERNAME=bookstack
       - DB_PASSWORD=bookstack
+      
+       # Mailjet SMTP Configuration
+      - MAIL_DRIVER=smtp
+      - MAIL_HOST=${BOOKSTACK_MAIL_HOST}
+      - MAIL_PORT=${BOOKSTACK_MAIL_PORT}
+      - MAIL_ENCRYPTION=${BOOKSTACK_MAIL_ENCRYPTION}
+      - MAIL_USERNAME=${BOOKSTACK_MAIL_USERNAME}
+      - MAIL_PASSWORD=${BOOKSTACK_MAIL_PASSWORD}
+      - MAIL_FROM=${BOOKSTACK_MAIL_FROM}
+      - MAIL_FROM_NAME=${BOOKSTACK_MAIL_FROM_NAME}
 
     # ports:
     #   - 8080:80

@@ -225,53 +225,77 @@ def extract_text_file_content(file_bytes: bytes) -> str:
 
 def extract_attachment_text(attachment_id: int) -> dict[str, Any]:
     """
-    Reads one BookStack attachment and extracts text.
-    For your uploaded PDF, external should be false and extension should be pdf.
+    Read one BookStack attachment and extract readable text.
+
+    If BookStack cannot read the stored file, skip this attachment instead of
+    stopping get_all_pages_as_rag_text.
     """
-    attachment = call_bookstack_api(f"/api/attachments/{attachment_id}")
+    try:
+        attachment = call_bookstack_api(f"/api/attachments/{attachment_id}")
+    except Exception as exc:
+        return {
+            "id": attachment_id,
+            "name": f"attachment-{attachment_id}",
+            "extension": "",
+            "external": None,
+            "uploaded_to": None,
+            "created_at": None,
+            "updated_at": None,
+            "links": None,
+            "source_url": None,
+            "text": "",
+            "extraction_error": str(exc),
+            "skipped": True,
+        }
 
     attachment_name = attachment.get("name") or f"attachment-{attachment_id}"
-    extension = (attachment.get("extension") or "").lower().strip(".")
+    extension = get_attachment_extension(attachment)
     is_external = bool(attachment.get("external"))
 
     extracted_text = ""
     extraction_error = None
+    skipped = False
 
     try:
         if is_external:
             external_url = str(attachment.get("content") or "").strip()
-            extracted_text = (
-                f"External link attachment: {external_url}\n"
-                "This is only a link, not uploaded PDF content. "
-                "For best RAG, upload the actual PDF file to BookStack."
-            )
+
+            if FETCH_EXTERNAL_ATTACHMENTS and external_url:
+                external_bytes, content_type, final_url = download_external_attachment(external_url)
+                external_extension = (
+                    extension
+                    or get_extension_from_name_or_url(name=attachment_name, url=final_url)
+                    or extension_from_content_type(content_type)
+                )
+                extracted_text = extract_bytes_by_extension(
+                    external_bytes,
+                    external_extension,
+                    attachment_name,
+                )
+
+                if not extracted_text.strip():
+                    skipped = True
+                    extracted_text = ""
+            else:
+                skipped = True
+                extracted_text = ""
 
         else:
             file_bytes = decode_attachment_content(attachment)
+            extracted_text = extract_bytes_by_extension(
+                file_bytes,
+                extension,
+                attachment_name,
+            )
 
-            if extension == "pdf":
-                extracted_text = extract_pdf_text(file_bytes)
-
-            elif extension in ["txt", "md", "csv", "json", "xml"]:
-                extracted_text = extract_text_file_content(file_bytes)
-
-            elif extension in ["html", "htm"]:
-                extracted_text = html_to_clean_text(
-                    extract_text_file_content(file_bytes)
-                )
-
-            else:
-                extracted_text = (
-                    f"Attachment '{attachment_name}' was found, "
-                    f"but text extraction is not supported for extension '{extension}'."
-                )
+            if not extracted_text.strip():
+                skipped = True
+                extracted_text = ""
 
     except Exception as exc:
         extraction_error = str(exc)
-        extracted_text = (
-            f"Attachment '{attachment_name}' was found, "
-            f"but text extraction failed: {extraction_error}"
-        )
+        skipped = True
+        extracted_text = ""
 
     return {
         "id": attachment.get("id"),
@@ -282,8 +306,10 @@ def extract_attachment_text(attachment_id: int) -> dict[str, Any]:
         "created_at": attachment.get("created_at"),
         "updated_at": attachment.get("updated_at"),
         "links": attachment.get("links"),
+        "source_url": attachment.get("content") if is_external else None,
         "text": extracted_text,
         "extraction_error": extraction_error,
+        "skipped": skipped,
     }
 
 

@@ -2,7 +2,9 @@ import base64
 import contextlib
 import os
 from io import BytesIO
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 import uvicorn
@@ -14,6 +16,16 @@ from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 
+try:
+    from docx import Document as DocxDocument
+except Exception:  # python-docx is optional
+    DocxDocument = None
+
+try:
+    import openpyxl
+except Exception:  # openpyxl is optional
+    openpyxl = None
+
 
 BOOKSTACK_BASE_URL = os.getenv("BOOKSTACK_BASE_URL", "http://bookstack").rstrip("/")
 BOOKSTACK_TOKEN_ID = os.getenv("BOOKSTACK_TOKEN_ID")
@@ -21,6 +33,14 @@ BOOKSTACK_TOKEN_SECRET = os.getenv("BOOKSTACK_TOKEN_SECRET")
 
 MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.getenv("MCP_PORT", "8000"))
+
+# Keep this false unless you really want the MCP server to download external link attachments.
+# Enabling it can create SSRF risk if untrusted users can create BookStack attachments.
+FETCH_EXTERNAL_ATTACHMENTS = os.getenv("FETCH_EXTERNAL_ATTACHMENTS", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+}
 
 
 mcp = FastMCP(
@@ -116,7 +136,105 @@ def simplify_page(page: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def get_uploaded_to_id(uploaded_to: Any) -> int | None:
+    if isinstance(uploaded_to, dict):
+        uploaded_to = uploaded_to.get("id")
+
+    if uploaded_to is None:
+        return None
+
+    try:
+        return int(uploaded_to)
+    except (TypeError, ValueError):
+        return None
+
+
+def get_extension_from_name_or_url(name: str | None, url: str | None = None) -> str:
+    candidates = [name or "", url or ""]
+
+    for candidate in candidates:
+        parsed_path = urlparse(candidate).path if "://" in candidate else candidate
+        suffix = Path(parsed_path).suffix.lower().strip(".")
+        if suffix:
+            return suffix
+
+    return ""
+
+
+def get_attachment_extension(attachment: dict[str, Any]) -> str:
+    extension = (attachment.get("extension") or "").lower().strip(".")
+
+    if extension:
+        return extension
+
+    content = attachment.get("content")
+    content_url = str(content) if content else None
+
+    return get_extension_from_name_or_url(
+        name=attachment.get("name"),
+        url=content_url,
+    )
+
+
+def list_all_attachments_internal(max_attachments: int = 10000) -> list[dict[str, Any]]:
+    """
+    Read every visible BookStack attachment using pagination.
+    This is more reliable for get_all_pages than calling /api/attachments once per page.
+    """
+    max_attachments = max(1, min(max_attachments, 10000))
+    collected_attachments: list[dict[str, Any]] = []
+    offset = 0
+    batch_size = 500
+
+    while len(collected_attachments) < max_attachments:
+        result = call_bookstack_api(
+            "/api/attachments",
+            {
+                "count": batch_size,
+                "offset": offset,
+            },
+        )
+
+        attachments = result.get("data", [])
+
+        if not attachments:
+            break
+
+        collected_attachments.extend(attachments)
+
+        total = result.get("total")
+        if isinstance(total, int) and offset + len(attachments) >= total:
+            break
+
+        if len(attachments) < batch_size:
+            break
+
+        offset += batch_size
+
+    return collected_attachments[:max_attachments]
+
+
+def group_attachments_by_page(
+    attachments: list[dict[str, Any]],
+) -> dict[int, list[dict[str, Any]]]:
+    grouped: dict[int, list[dict[str, Any]]] = {}
+
+    for attachment in attachments:
+        page_id = get_uploaded_to_id(attachment.get("uploaded_to"))
+
+        if page_id is None:
+            continue
+
+        grouped.setdefault(page_id, []).append(attachment)
+
+    return grouped
+
+
 def list_attachments_for_page_internal(page_id: int) -> list[dict[str, Any]]:
+    """
+    List attachments for one page.
+    It first asks BookStack for the page filter, then locally validates the uploaded_to value.
+    """
     result = call_bookstack_api(
         "/api/attachments",
         {
@@ -127,22 +245,11 @@ def list_attachments_for_page_internal(page_id: int) -> list[dict[str, Any]]:
 
     attachments = result.get("data", [])
 
-    filtered_attachments = []
-
-    for attachment in attachments:
-        uploaded_to = attachment.get("uploaded_to")
-
-        if isinstance(uploaded_to, int) and uploaded_to == page_id:
-            filtered_attachments.append(attachment)
-            continue
-
-        if isinstance(uploaded_to, dict) and uploaded_to.get("id") == page_id:
-            filtered_attachments.append(attachment)
-            continue
-
-        if str(uploaded_to) == str(page_id):
-            filtered_attachments.append(attachment)
-            continue
+    filtered_attachments = [
+        attachment
+        for attachment in attachments
+        if get_uploaded_to_id(attachment.get("uploaded_to")) == page_id
+    ]
 
     return filtered_attachments
 
@@ -156,7 +263,19 @@ def decode_attachment_content(attachment: dict[str, Any]) -> bytes:
     if attachment.get("external"):
         return str(content).encode("utf-8", errors="ignore")
 
-    return base64.b64decode(content)
+    if isinstance(content, bytes):
+        return content
+
+    content_text = str(content).strip()
+
+    # Supports values such as: data:application/pdf;base64,JVBERi0x...
+    if content_text.startswith("data:") and "," in content_text:
+        content_text = content_text.split(",", 1)[1]
+
+    try:
+        return base64.b64decode(content_text, validate=False)
+    except Exception as exc:
+        raise RuntimeError(f"Could not decode attachment base64 content: {exc}") from exc
 
 
 def extract_pdf_text(file_bytes: bytes) -> str:
@@ -185,30 +304,144 @@ def extract_text_file_content(file_bytes: bytes) -> str:
     return file_bytes.decode("utf-8", errors="ignore").strip()
 
 
+def extract_docx_text(file_bytes: bytes) -> str:
+    if not file_bytes:
+        return ""
+
+    if DocxDocument is None:
+        return "DOCX attachment found, but python-docx is not installed in the MCP container."
+
+    document = DocxDocument(BytesIO(file_bytes))
+    parts: list[str] = []
+
+    for paragraph in document.paragraphs:
+        text = paragraph.text.strip()
+        if text:
+            parts.append(text)
+
+    for table in document.tables:
+        for row in table.rows:
+            values = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+            if values:
+                parts.append(" | ".join(values))
+
+    return "\n".join(parts).strip()
+
+
+def extract_xlsx_text(file_bytes: bytes) -> str:
+    if not file_bytes:
+        return ""
+
+    if openpyxl is None:
+        return "XLSX attachment found, but openpyxl is not installed in the MCP container."
+
+    workbook = openpyxl.load_workbook(BytesIO(file_bytes), data_only=True, read_only=True)
+    parts: list[str] = []
+
+    for sheet_name in workbook.sheetnames:
+        sheet = workbook[sheet_name]
+        parts.append(f"--- XLSX Sheet: {sheet_name} ---")
+
+        for row in sheet.iter_rows(values_only=True):
+            values = [str(value) for value in row if value is not None and str(value).strip()]
+            if values:
+                parts.append(" | ".join(values))
+
+    return "\n".join(parts).strip()
+
+
+def extract_bytes_by_extension(
+    file_bytes: bytes,
+    extension: str,
+    attachment_name: str,
+) -> str:
+    extension = (extension or "").lower().strip(".")
+
+    if not file_bytes:
+        return ""
+
+    if extension == "pdf":
+        return extract_pdf_text(file_bytes)
+
+    if extension in ["txt", "md", "csv", "json", "xml"]:
+        return extract_text_file_content(file_bytes)
+
+    if extension in ["html", "htm"]:
+        return html_to_clean_text(extract_text_file_content(file_bytes))
+
+    if extension == "docx":
+        return extract_docx_text(file_bytes)
+
+    if extension == "xlsx":
+        return extract_xlsx_text(file_bytes)
+
+    return (
+        f"Attachment '{attachment_name}' was found, "
+        f"but text extraction is not supported for extension '{extension}'."
+    )
+
+
+def download_external_attachment(url: str) -> bytes:
+    headers: dict[str, str] = {}
+
+    # If the external link points back to this same BookStack instance, reuse API auth.
+    if url.startswith(BOOKSTACK_BASE_URL):
+        headers = get_bookstack_headers()
+
+    response = requests.get(url, headers=headers, timeout=60)
+
+    if response.status_code >= 400:
+        raise RuntimeError(
+            {
+                "error": "External attachment download failed",
+                "url": url,
+                "status_code": response.status_code,
+                "response": response.text[:500],
+            }
+        )
+
+    return response.content
+
+
 def extract_attachment_text(attachment_id: int) -> dict[str, Any]:
     attachment = call_bookstack_api(f"/api/attachments/{attachment_id}")
 
     attachment_name = attachment.get("name") or f"attachment-{attachment_id}"
-    extension = (attachment.get("extension") or "").lower().strip(".")
+    extension = get_attachment_extension(attachment)
     is_external = bool(attachment.get("external"))
 
-    file_bytes = decode_attachment_content(attachment)
-
     extracted_text = ""
+    extraction_error = None
 
-    if is_external:
-        extracted_text = file_bytes.decode("utf-8", errors="ignore").strip()
+    try:
+        if is_external:
+            external_url = str(attachment.get("content") or "").strip()
 
-    elif extension == "pdf":
-        extracted_text = extract_pdf_text(file_bytes)
-
-    elif extension in ["txt", "md", "csv", "json", "xml", "html"]:
-        extracted_text = extract_text_file_content(file_bytes)
-
-    else:
+            if FETCH_EXTERNAL_ATTACHMENTS and external_url:
+                external_bytes = download_external_attachment(external_url)
+                external_extension = extension or get_extension_from_name_or_url(
+                    name=attachment_name,
+                    url=external_url,
+                )
+                extracted_text = extract_bytes_by_extension(
+                    external_bytes,
+                    external_extension,
+                    attachment_name,
+                )
+            else:
+                extracted_text = f"External link attachment: {external_url}"
+        else:
+            file_bytes = decode_attachment_content(attachment)
+            extracted_text = extract_bytes_by_extension(
+                file_bytes,
+                extension,
+                attachment_name,
+            )
+    except Exception as exc:
+        extraction_error = str(exc)
         extracted_text = (
             f"Attachment '{attachment_name}' was found, "
-            f"but text extraction is not supported for extension '{extension}'."
+            f"but text extraction failed: {extraction_error}"
         )
 
     return {
@@ -221,11 +454,13 @@ def extract_attachment_text(attachment_id: int) -> dict[str, Any]:
         "updated_at": attachment.get("updated_at"),
         "links": attachment.get("links"),
         "text": extracted_text,
+        "extraction_error": extraction_error,
     }
 
 
 def build_page_text_with_attachments(
     page: dict[str, Any],
+    page_attachments: list[dict[str, Any]] | None = None,
 ) -> tuple[str, list[dict[str, Any]]]:
     page_id = page.get("id")
     html = page.get("html") or ""
@@ -235,7 +470,11 @@ def build_page_text_with_attachments(
     if page_id is None:
         return page_text, []
 
-    attachments = list_attachments_for_page_internal(int(page_id))
+    attachments = (
+        page_attachments
+        if page_attachments is not None
+        else list_attachments_for_page_internal(int(page_id))
+    )
 
     extracted_attachments = []
 
@@ -253,11 +492,41 @@ def build_page_text_with_attachments(
         if attachment_text.strip():
             page_text = (
                 f"{page_text}\n\n"
-                f"--- Attachment: {extracted_attachment.get('name')} ---\n"
+                f"--- Attachment: {extracted_attachment.get('name')} "
+                f"[id={extracted_attachment.get('id')}, "
+                f"extension={extracted_attachment.get('extension')}] ---\n"
                 f"{attachment_text}"
             )
 
     return page_text.strip(), extracted_attachments
+
+
+def get_page_internal(
+    page_id: int,
+    include_attachments: bool = True,
+    page_attachments: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    page = call_bookstack_api(f"/api/pages/{page_id}")
+
+    if include_attachments:
+        text, attachments = build_page_text_with_attachments(page, page_attachments)
+    else:
+        text = html_to_clean_text(page.get("html") or "")
+        attachments = []
+
+    return {
+        "id": page.get("id"),
+        "name": page.get("name"),
+        "slug": page.get("slug"),
+        "book_id": page.get("book_id"),
+        "chapter_id": page.get("chapter_id"),
+        "url": page.get("url"),
+        "created_at": page.get("created_at"),
+        "updated_at": page.get("updated_at"),
+        "text": text,
+        "attachment_count": len(attachments),
+        "attachments": attachments,
+    }
 
 
 def format_page_for_rag(page: dict[str, Any]) -> str:
@@ -300,7 +569,7 @@ def list_pages(count: int = 20, offset: int = 0) -> dict[str, Any]:
     """
     List BookStack pages.
     """
-    count = max(1, min(count, 100))
+    count = max(1, min(count, 500))
     offset = max(0, offset)
 
     result = call_bookstack_api(
@@ -329,26 +598,10 @@ def get_page(page_id: int, include_attachments: bool = True) -> dict[str, Any]:
     If include_attachments is true, supported attachment text is added
     to the returned page text.
     """
-    page = call_bookstack_api(f"/api/pages/{page_id}")
-
-    if include_attachments:
-        text, attachments = build_page_text_with_attachments(page)
-    else:
-        text = html_to_clean_text(page.get("html") or "")
-        attachments = []
-
-    return {
-        "id": page.get("id"),
-        "name": page.get("name"),
-        "slug": page.get("slug"),
-        "book_id": page.get("book_id"),
-        "chapter_id": page.get("chapter_id"),
-        "url": page.get("url"),
-        "created_at": page.get("created_at"),
-        "updated_at": page.get("updated_at"),
-        "text": text,
-        "attachments": attachments,
-    }
+    return get_page_internal(
+        page_id=page_id,
+        include_attachments=include_attachments,
+    )
 
 
 @mcp.tool()
@@ -359,7 +612,7 @@ def get_page_as_rag_text(
     """
     Get one BookStack page as clean text for Langflow RAG ingestion.
     """
-    page = get_page(
+    page = get_page_internal(
         page_id=page_id,
         include_attachments=include_attachments,
     )
@@ -368,6 +621,7 @@ def get_page_as_rag_text(
         "page_id": page.get("id"),
         "page_name": page.get("name"),
         "page_url": page.get("url"),
+        "attachment_count": page.get("attachment_count"),
         "rag_text": format_page_for_rag(page),
     }
 
@@ -408,33 +662,56 @@ def list_page_attachments(page_id: int) -> dict[str, Any]:
 
 
 @mcp.tool()
+def list_all_attachments(max_attachments: int = 10000) -> dict[str, Any]:
+    """
+    List all visible BookStack attachments with pagination.
+    Useful for debugging whether the API token can see page attachments.
+    """
+    attachments = list_all_attachments_internal(max_attachments=max_attachments)
+
+    return {
+        "total_collected": len(attachments),
+        "attachments": attachments,
+    }
+
+
+@mcp.tool()
 def get_attachment_text(attachment_id: int) -> dict[str, Any]:
     """
     Extract readable text from a BookStack attachment.
 
     Supported attachment types:
-    PDF, TXT, MD, CSV, JSON, XML, HTML.
+    PDF, TXT, MD, CSV, JSON, XML, HTML, DOCX, XLSX.
     """
     return extract_attachment_text(attachment_id)
 
 
 @mcp.tool()
 def get_all_pages(
-    max_pages: int = 200,
+    max_pages: int = 5000,
     include_attachments: bool = True,
+    max_attachments: int = 10000,
 ) -> dict[str, Any]:
     """
     Get all BookStack pages with clean text.
 
-    This returns structured page data.
-    Use get_all_pages_as_rag_text when you want one plain text block
-    for Langflow RAG ingestion.
+    If include_attachments is true, this function first collects all visible
+    attachments with pagination, groups them by uploaded_to page ID, and then
+    extracts attachment text into each page text.
     """
-    max_pages = max(1, min(max_pages, 500))
+    max_pages = max(1, min(max_pages, 10000))
 
     collected_pages = []
     offset = 0
-    batch_size = 50
+    batch_size = 500
+
+    attachments_by_page: dict[int, list[dict[str, Any]]] = {}
+    total_attachments_found = 0
+
+    if include_attachments:
+        all_attachments = list_all_attachments_internal(max_attachments=max_attachments)
+        total_attachments_found = len(all_attachments)
+        attachments_by_page = group_attachments_by_page(all_attachments)
 
     while len(collected_pages) < max_pages:
         list_result = call_bookstack_api(
@@ -459,36 +736,53 @@ def get_all_pages(
             if page_id is None:
                 continue
 
-            full_page = get_page(
+            page_attachments = attachments_by_page.get(int(page_id), [])
+
+            full_page = get_page_internal(
                 page_id=int(page_id),
                 include_attachments=include_attachments,
+                page_attachments=page_attachments,
             )
 
             collected_pages.append(full_page)
 
+        if len(page_items) < batch_size:
+            break
+
+        total = list_result.get("total")
+        if isinstance(total, int) and offset + len(page_items) >= total:
+            break
+
         offset += batch_size
+
+    total_attachments_added_to_pages = sum(
+        page.get("attachment_count", 0) for page in collected_pages
+    )
 
     return {
         "total_collected": len(collected_pages),
         "include_attachments": include_attachments,
+        "total_attachments_found": total_attachments_found,
+        "total_attachments_added_to_pages": total_attachments_added_to_pages,
         "pages": collected_pages,
     }
 
 
 @mcp.tool()
 def get_all_pages_as_rag_text(
-    max_pages: int = 200,
+    max_pages: int = 5000,
     include_attachments: bool = True,
+    max_attachments: int = 10000,
 ) -> dict[str, Any]:
     """
     Get all BookStack pages as one clean RAG text block.
 
-    This is the easiest tool to use in Langflow before Split Text,
-    Embeddings, and ChromaDB.
+    Use this in Langflow before Split Text, Embeddings, and ChromaDB.
     """
     result = get_all_pages(
         max_pages=max_pages,
         include_attachments=include_attachments,
+        max_attachments=max_attachments,
     )
 
     pages = result.get("pages", [])
@@ -501,6 +795,10 @@ def get_all_pages_as_rag_text(
     return {
         "total_pages": len(pages),
         "include_attachments": include_attachments,
+        "total_attachments_found": result.get("total_attachments_found"),
+        "total_attachments_added_to_pages": result.get(
+            "total_attachments_added_to_pages"
+        ),
         "rag_text": "\n\n".join(rag_text_parts),
     }
 

@@ -10,7 +10,7 @@ This document describes the complete setup process for a Contabo VPS running Ubu
  Firewall configuration
  Caddy Docker Proxy setup
  Test container deployment
- Docker permission troubleshooting
+ Docker permission troubleshooting.
 
 
 

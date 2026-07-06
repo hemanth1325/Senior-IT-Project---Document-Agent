@@ -5,6 +5,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+import re
 
 import requests
 import uvicorn
@@ -39,11 +40,26 @@ EXTERNAL_ATTACHMENT_ALLOWED_HOSTS = {
 }
 MAX_EXTERNAL_ATTACHMENT_BYTES = int(os.getenv("MAX_EXTERNAL_ATTACHMENT_BYTES", "26214400"))
 
+# Extra Host/Origin allow-list entries for MCP DNS-rebinding protection.
+# Example:
+# MCP_ALLOWED_HOSTS=bookstack-mcp,bookstack-mcp:8000,mdhbookstack.duckdns.org,mdhbookstack.duckdns.org:*
+# MCP_ALLOWED_ORIGINS=http://langflow:7860,https://your-langflow-domain.duckdns.org
+EXTRA_MCP_ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("MCP_ALLOWED_HOSTS", "").split(",")
+    if host.strip()
+]
+EXTRA_MCP_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("MCP_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
 
 mcp = FastMCP(
     name="MDH BookStack MCP Server",
-    stateless_http=True,
-    json_response=True,
+    stateless_http=False,
+    json_response=False,
     transport_security=TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
         allowed_hosts=[
@@ -52,12 +68,14 @@ mcp = FastMCP(
             "bookstack-mcp",
             "bookstack-mcp:*",
             "bookstack-mcp:8000",
+            *EXTRA_MCP_ALLOWED_HOSTS,
         ],
         allowed_origins=[
             "http://localhost:*",
             "http://127.0.0.1:*",
             "http://langflow:*",
             "http://langflow:7860",
+            *EXTRA_MCP_ALLOWED_ORIGINS,
         ],
     ),
 )
@@ -202,6 +220,125 @@ def group_attachments_by_page(
         grouped.setdefault(page_id, []).append(attachment)
 
     return grouped
+
+
+def extract_attachment_ids_from_text(value: str) -> list[int]:
+    """
+    Detect BookStack attachment IDs from page HTML/link text.
+
+    Common BookStack file links look like /attachments/{id}.
+    This fallback helps when the PDF is inserted as a link inside the page body
+    instead of being returned by /api/attachments as uploaded_to=<page_id>.
+    """
+    if not value:
+        return []
+
+    patterns = [
+        r"/api/attachments/(\d+)",
+        r"/attachments/(\d+)",
+        r"attachment[_-]?id[\s=:&quot;'\"]+(\d+)",
+        r"data-attachment-id=[&quot;'\"]?(\d+)",
+    ]
+
+    found: set[int] = set()
+    for pattern in patterns:
+        for match in re.findall(pattern, value, flags=re.IGNORECASE):
+            try:
+                found.add(int(match))
+            except (TypeError, ValueError):
+                continue
+
+    return sorted(found)
+
+
+def extract_attachment_links_from_html(html: str) -> list[dict[str, Any]]:
+    """Return links from page HTML that look like BookStack/PDF attachments."""
+    soup = BeautifulSoup(html or "", "html.parser")
+    links: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for tag in soup.find_all(["a", "iframe", "embed", "object"]):
+        href = (
+            tag.get("href")
+            or tag.get("src")
+            or tag.get("data")
+            or tag.get("data-url")
+            or ""
+        )
+        label = tag.get_text(" ", strip=True) or tag.get("title") or tag.get("alt") or ""
+        href_text = str(href).strip()
+        label_text = str(label).strip()
+
+        combined = f"{href_text} {label_text}"
+        detected_ids = extract_attachment_ids_from_text(combined)
+        looks_like_file = bool(
+            detected_ids
+            or ".pdf" in combined.lower()
+            or ".docx" in combined.lower()
+            or ".xlsx" in combined.lower()
+            or ".txt" in combined.lower()
+            or ".csv" in combined.lower()
+        )
+
+        if not looks_like_file:
+            continue
+
+        key = (href_text, label_text)
+        if key in seen:
+            continue
+
+        seen.add(key)
+        links.append(
+            {
+                "tag": tag.name,
+                "href": href_text,
+                "label": label_text,
+                "detected_attachment_ids": detected_ids,
+            }
+        )
+
+    # Some editors store attachment metadata outside normal links.
+    html_detected_ids = extract_attachment_ids_from_text(html or "")
+    if html_detected_ids and not any(link["detected_attachment_ids"] for link in links):
+        links.append(
+            {
+                "tag": "html",
+                "href": "",
+                "label": "attachment ids found in raw html",
+                "detected_attachment_ids": html_detected_ids,
+            }
+        )
+
+    return links
+
+
+def get_linked_attachment_stubs_from_page_html(
+    page_id: int,
+    html: str,
+    existing_attachment_ids: set[int] | None = None,
+) -> list[dict[str, Any]]:
+    """Build attachment stubs from attachment IDs discovered in the page HTML."""
+    existing_attachment_ids = existing_attachment_ids or set()
+    stubs: list[dict[str, Any]] = []
+
+    for link in extract_attachment_links_from_html(html):
+        for attachment_id in link.get("detected_attachment_ids", []):
+            if attachment_id in existing_attachment_ids:
+                continue
+
+            existing_attachment_ids.add(attachment_id)
+            stubs.append(
+                {
+                    "id": attachment_id,
+                    "name": link.get("label") or f"linked-attachment-{attachment_id}",
+                    "uploaded_to": page_id,
+                    "external": False,
+                    "source": "page_html_link",
+                    "links": {"html_href": link.get("href")},
+                }
+            )
+
+    return stubs
 
 
 def get_extension_from_name_or_url(name: str = "", url: str = "") -> str:
@@ -518,7 +655,23 @@ def build_page_text_with_attachments(
     if page_attachments is None:
         attachments = list_attachments_for_page_internal(int(page_id))
     else:
-        attachments = page_attachments
+        attachments = list(page_attachments)
+
+    # Fallback: If the PDF/file is inserted as a link in the page body,
+    # it may not appear under /api/attachments with uploaded_to=<page_id>.
+    # Detect /attachments/{id} links from the page HTML and read those IDs too.
+    existing_attachment_ids = {
+        int(attachment.get("id"))
+        for attachment in attachments
+        if attachment.get("id") is not None
+    }
+    attachments.extend(
+        get_linked_attachment_stubs_from_page_html(
+            page_id=int(page_id),
+            html=html,
+            existing_attachment_ids=existing_attachment_ids,
+        )
+    )
 
     extracted_attachments = []
 
@@ -714,6 +867,47 @@ def search_bookstack(query: str, count: int = 10) -> dict[str, Any]:
 
 
 @mcp.tool()
+def debug_page_attachment_detection(page_id: int) -> dict[str, Any]:
+    """
+    Debug why a page is not reading a PDF/file.
+
+    Shows:
+    - attachments found through BookStack /api/attachments
+    - file-like links found inside the page HTML
+    - attachment IDs detected from those HTML links
+    """
+    page = call_bookstack_api(f"/api/pages/{page_id}")
+    html = page.get("html") or ""
+    api_attachments = list_attachments_for_page_internal(page_id)
+    html_links = extract_attachment_links_from_html(html)
+    detected_html_attachment_ids = sorted(
+        {
+            attachment_id
+            for link in html_links
+            for attachment_id in link.get("detected_attachment_ids", [])
+        }
+    )
+
+    return {
+        "page_id": page_id,
+        "page_name": page.get("name"),
+        "clean_page_text_preview": html_to_clean_text(html)[:1000],
+        "api_attachment_count": len(api_attachments),
+        "api_attachments": api_attachments,
+        "html_file_like_links_count": len(html_links),
+        "html_file_like_links": html_links,
+        "detected_html_attachment_ids": detected_html_attachment_ids,
+        "diagnosis": (
+            "BookStack API found attachments for this page."
+            if api_attachments
+            else "No attachments found via /api/attachments for this page. "
+                 "If html_file_like_links_count is also 0, the PDF name is only plain text, "
+                 "so the server has no file ID/URL to fetch."
+        ),
+    }
+
+
+@mcp.tool()
 def list_page_attachments(page_id: int) -> dict[str, Any]:
     """
     List all attachments uploaded to a specific BookStack page.
@@ -749,10 +943,88 @@ def list_all_attachments(max_attachments: int = 10000) -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_all_pages(
-    max_pages: int = 5000,
+def get_pages_batch_as_rag_text(
+    offset: int = 0,
+    count: int = 10,
     include_attachments: bool = True,
-    max_attachments: int = 10000,
+    max_attachments: int = 1000,
+) -> dict[str, Any]:
+    """
+    Safer Langflow RAG ingestion tool.
+    Fetch a small batch of BookStack pages and return clean RAG text.
+    Use next_offset repeatedly until has_more=false.
+    """
+    offset = max(0, offset)
+    count = max(1, min(count, 50))
+    max_attachments = max(1, min(max_attachments, 10000))
+
+    list_result = call_bookstack_api(
+        "/api/pages",
+        {
+            "count": count,
+            "offset": offset,
+        },
+    )
+
+    page_items = list_result.get("data", [])
+    total = list_result.get("total")
+
+    attachments_by_page: dict[int, list[dict[str, Any]]] = {}
+    total_attachments_found = 0
+
+    if include_attachments and page_items:
+        all_attachments = list_all_attachments_internal(max_attachments=max_attachments)
+        total_attachments_found = len(all_attachments)
+        attachments_by_page = group_attachments_by_page(all_attachments)
+
+    pages = []
+    rag_text_parts = []
+
+    for page_item in page_items:
+        page_id = page_item.get("id")
+        if page_id is None:
+            continue
+
+        page_attachments = attachments_by_page.get(int(page_id), [])
+        page = get_page_internal(
+            page_id=int(page_id),
+            include_attachments=include_attachments,
+            page_attachments=page_attachments,
+        )
+        pages.append(page)
+        rag_text_parts.append(format_page_for_rag(page))
+
+    next_offset = offset + len(page_items)
+    has_more = bool(isinstance(total, int) and next_offset < total)
+
+    return {
+        "offset": offset,
+        "count": count,
+        "next_offset": next_offset,
+        "has_more": has_more,
+        "total": total,
+        "total_pages_in_batch": len(pages),
+        "include_attachments": include_attachments,
+        "total_attachments_found": total_attachments_found,
+        "total_attachments_added_to_pages": sum(
+            page.get("attachment_count", 0) for page in pages
+        ),
+        "total_attachments_with_text": sum(
+            page.get("attachment_text_count", 0) for page in pages
+        ),
+        "total_attachments_skipped": sum(
+            page.get("attachment_skipped_count", 0) for page in pages
+        ),
+        "pages": [simplify_page(page) for page in pages],
+        "rag_text": "\n\n".join(rag_text_parts),
+    }
+
+
+@mcp.tool()
+def get_all_pages(
+    max_pages: int = 50,
+    include_attachments: bool = True,
+    max_attachments: int = 1000,
 ) -> dict[str, Any]:
     """
     Get all BookStack pages.
@@ -841,9 +1113,9 @@ def get_all_pages(
 
 @mcp.tool()
 def get_all_pages_as_rag_text(
-    max_pages: int = 5000,
+    max_pages: int = 50,
     include_attachments: bool = True,
-    max_attachments: int = 10000,
+    max_attachments: int = 1000,
 ) -> dict[str, Any]:
     """
     Main tool for Langflow RAG.

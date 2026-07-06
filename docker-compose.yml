@@ -29,8 +29,8 @@ services:
       - DB_DATABASE=bookstackapp
       - DB_USERNAME=bookstack
       - DB_PASSWORD=bookstack
-      
-       # Mailjet SMTP Configuration
+
+      # Mailjet SMTP Configuration
       - MAIL_DRIVER=smtp
       - MAIL_HOST=${BOOKSTACK_MAIL_HOST}
       - MAIL_PORT=${BOOKSTACK_MAIL_PORT}
@@ -40,8 +40,9 @@ services:
       - MAIL_FROM=${BOOKSTACK_MAIL_FROM}
       - MAIL_FROM_NAME=${BOOKSTACK_MAIL_FROM_NAME}
 
-    # ports:
-    #   - 8080:80
+    volumes:
+      - bookstack_config:/config
+
     depends_on:
       - db
     networks:
@@ -152,7 +153,7 @@ services:
 volumes:
   db_data:
   ollama_data:
-
+  bookstack_config:
   # webui_data:
 
 networks:

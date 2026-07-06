@@ -1,6 +1,10 @@
 services:
   langflow:
-    image: langflowai/langflow:latest
+    # image: langflowai/langflow:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.langflow
+      
     container_name: langflow
     environment:
       - LANGFLOW_CONFIG_DIR=/app/langflow

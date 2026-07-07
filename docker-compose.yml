@@ -42,6 +42,7 @@ services:
 
     volumes:
       - bookstack_config:/config
+      - ./custom:/app/www/public/custom:ro
 
     depends_on:
       - db

@@ -1,0 +1,152 @@
+body.mdh-auth-page .skip-to-content-link,
+  body.mdh-auth-page a[href="#main-content"] {
+    display: none !important;
+  }
+
+  body.mdh-auth-page header,
+  body.mdh-auth-page .header,
+  body.mdh-auth-page nav {
+    display: none !important;
+  }
+
+  body.mdh-auth-page {
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    background:
+      radial-gradient(circle at top left, rgba(37, 99, 235, 0.20), transparent 34%),
+      radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.20), transparent 32%),
+      linear-gradient(135deg, #f8fafc 0%, #eaf1ff 45%, #dbeafe 100%) !important;
+    font-family: Inter, Arial, sans-serif !important;
+    padding: clamp(22px, 5vh, 54px) 18px 36px !important;
+    box-sizing: border-box !important;
+  }
+
+  body.mdh-auth-page .mdh-auth-top {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto 22px;
+    text-align: center;
+  }
+
+  body.mdh-auth-page .mdh-text-logo {
+    display: block;
+    text-align: center;
+    font-size: 44px;
+    font-weight: 900;
+    color: #0f172a !important;
+    text-decoration: none;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+  }
+
+  body.mdh-auth-page .mdh-login-heading h1 {
+    margin: 0;
+    color: #0f172a !important;
+    font-size: 34px;
+    font-weight: 900;
+  }
+
+  body.mdh-auth-page .mdh-login-heading p {
+    margin: 8px auto 0;
+    color: #475569;
+    font-size: 15px;
+    line-height: 1.6;
+    max-width: 680px;
+  }
+
+  body.mdh-auth-page main,
+  body.mdh-auth-page .container,
+  body.mdh-auth-page .content-wrap {
+    width: 100% !important;
+    max-width: 440px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  body.mdh-auth-page form {
+    width: 100% !important;
+    background: rgba(255, 255, 255, 0.97) !important;
+    border: 1px solid rgba(226, 232, 240, 0.95) !important;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.16) !important;
+    border-radius: 28px !important;
+    padding: 32px !important;
+    box-sizing: border-box;
+  }
+
+  body.mdh-auth-page form::before {
+    content: "Welcome back";
+    display: block;
+    color: #0f172a;
+    font-size: 30px;
+    font-weight: 900;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+
+  body.mdh-auth-page form::after {
+    content: "Sign in with your university account to access MDH BookStack resources.";
+    display: block;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-top: 18px;
+    text-align: center;
+  }
+
+  body.mdh-auth-page label {
+    color: #334155 !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+  }
+
+  body.mdh-auth-page input[type="text"],
+  body.mdh-auth-page input[type="email"],
+  body.mdh-auth-page input[type="password"] {
+    width: 100% !important;
+    border-radius: 15px !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    padding: 13px 14px !important;
+    font-size: 15px !important;
+    box-sizing: border-box;
+  }
+
+  body.mdh-auth-page input:focus {
+    border-color: #2563eb !important;
+    background: #ffffff !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14) !important;
+    outline: none !important;
+  }
+
+  body.mdh-auth-page button,
+  body.mdh-auth-page .button,
+  body.mdh-auth-page input[type="submit"] {
+    border-radius: 15px !important;
+    background: linear-gradient(135deg, #1e3a8a, #2563eb) !important;
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 800 !important;
+    padding: 12px 18px !important;
+    box-shadow: 0 14px 35px rgba(37, 99, 235, 0.26) !important;
+  }
+
+  body.mdh-auth-page a {
+    color: #1d4ed8 !important;
+    font-weight: 700;
+  }
+
+  @media (max-width: 600px) {
+    body.mdh-auth-page .mdh-text-logo {
+      font-size: 32px;
+    }
+
+    body.mdh-auth-page .mdh-login-heading h1 {
+      font-size: 26px;
+    }
+
+    body.mdh-auth-page form {
+      padding: 24px !important;
+    }
+  }

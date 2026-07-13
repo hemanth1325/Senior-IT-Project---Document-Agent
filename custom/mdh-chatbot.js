@@ -62,7 +62,7 @@
       document.body.insertAdjacentHTML("beforeend", chatbotHtml);
 
       const MDH_LANGFLOW_HOST = "https://langflow.mdhbookstack.duckdns.org";
-      const MDH_LANGFLOW_FLOW_ID = "ac2aa735-1ee6-4e88-9cd2-029200d6d740";
+      const MDH_LANGFLOW_FLOW_ID = "30614fd8-97a7-4bd9-a882-3296aa1e1f76";
 
       /*
         Testing only:

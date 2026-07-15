@@ -81,19 +81,43 @@
       let isOpen = false;
       let isSending = false;
 
+      // function getSessionId() {
+      //   const existing = localStorage.getItem("mdh_bookstack_chat_session_id");
+
+      //   if (existing) return existing;
+
+      //   const created =
+      //     window.crypto && window.crypto.randomUUID
+      //       ? window.crypto.randomUUID()
+      //       : "mdh-session-" + Date.now();
+
+      //   localStorage.setItem("mdh_bookstack_chat_session_id", created);
+      //   return created;
+      // }
+
+
       function getSessionId() {
-        const existing = localStorage.getItem("mdh_bookstack_chat_session_id");
+    if (
+        window.MDH_USER &&
+        window.MDH_USER.authenticated &&
+        window.MDH_USER.bookstack_user_id
+    ) {
+        return "user-" + window.MDH_USER.bookstack_user_id;
+    }
 
-        if (existing) return existing;
+    return "guest";
+}
 
-        const created =
-          window.crypto && window.crypto.randomUUID
-            ? window.crypto.randomUUID()
-            : "mdh-session-" + Date.now();
 
-        localStorage.setItem("mdh_bookstack_chat_session_id", created);
-        return created;
-      }
+
+
+
+
+
+
+
+
+
 
       function openChatbot() {
         isOpen = true;

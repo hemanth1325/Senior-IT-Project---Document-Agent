@@ -452,14 +452,15 @@
      */
 
     function getLangflowSessionId(
-
+      bookStackUserName,
       bookStackUserId
-
     ) {
-
+      const safeName = String(bookStackUserName).trim().toLowerCase().replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\-]/g, "") .replace(/\-+/g, "-") .replace(/^\-+|\-+$/g, "");
+      
       return (
 
-        "mdh-bookstack-user-" +
+        safeName + "-" +
 
         String(bookStackUserId)
 
@@ -1752,7 +1753,7 @@
         const langflowSessionId =
 
           getLangflowSessionId(
-
+            bookStackUser.name,
             bookStackUser.id
 
           );

@@ -81,31 +81,36 @@
       let isOpen = false;
       let isSending = false;
 
-      // function getSessionId() {
-      //   const existing = localStorage.getItem("mdh_bookstack_chat_session_id");
-
-      //   if (existing) return existing;
-
-      //   const created =
-      //     window.crypto && window.crypto.randomUUID
-      //       ? window.crypto.randomUUID()
-      //       : "mdh-session-" + Date.now();
-
-      //   localStorage.setItem("mdh_bookstack_chat_session_id", created);
-      //   return created;
-      // }
-
-
       function getSessionId() {
-    if (
-        window.MDH_USER &&
-        window.MDH_USER.authenticated &&
-        window.MDH_USER.bookstack_user_id
-    ) {
-        return "user-" + window.MDH_USER.bookstack_user_id;
-    }
+        const existing = localStorage.getItem("mdh_bookstack_chat_session_id");
 
-    return "guest";
+        if (existing) return existing;
+
+        const created =
+          window.crypto && window.crypto.randomUUID
+            ? window.crypto.randomUUID()
+            : "mdh-session-" + Date.now();
+
+        localStorage.setItem("mdh_bookstack_chat_session_id", created);
+        return created;
+      }
+
+
+      function getBookStackUser() {
+        if (
+          window.MDH_USER &&
+          window.MDH_USER.authenticated &&
+          window.MDH_USER.bookstack_user_id
+        ) {
+              return window.MDH_USER;
+          }
+
+        return {
+          bookstack_user_id: "guest",
+          bookstack_user_name: "Guest",
+          bookstack_user_email: "guest"
+        };
+      }
 }
 
 

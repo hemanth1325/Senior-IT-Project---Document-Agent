@@ -536,13 +536,30 @@
                 "Accept": "text/event-stream",
                 "x-api-key": MDH_LANGFLOW_API_KEY
               },
+              // body: JSON.stringify({
+              //   input_type: "chat",
+              //   input_value: userText,
+              //   output_type: "chat",
+              //   session_id: getSessionId(),
+              //   stream: true
+              // })
               body: JSON.stringify({
-                input_type: "chat",
-                input_value: userText,
-                output_type: "chat",
-                session_id: getSessionId(),
-                stream: true
+                  input_type: "chat",
+                  input_value: userText,
+                  output_type: "chat",
+              
+                  session_id: `bookstack-user-${currentUser.bookstack_user_id}`,
+              
+                  user_id: currentUser.bookstack_user_id,
+              
+                  tweaks: {
+                      username: currentUser.bookstack_user_name,
+                      email: currentUser.bookstack_user_email
+                  },
+              
+                  stream: true
               })
+
             }
           );
 

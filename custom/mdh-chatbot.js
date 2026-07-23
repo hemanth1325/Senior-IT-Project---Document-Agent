@@ -68,12 +68,10 @@
 </div>
  
           <div id="mdh-chatbot-messages">
-<div class="mdh-message mdh-message-bot">
+<div id="mdh-chatbot-welcome" class="mdh-message mdh-message-bot">
 
               Hello! I am your MDH BookStack Student Assistant.
-
               Ask me about programs, campus information,
-
               timetable, or documents.
 </div>
 </div>
@@ -120,9 +118,7 @@
     `;
  
     document.body.insertAdjacentHTML(
-
       "beforeend",
-
       chatbotHtml
 
     );
@@ -182,11 +178,15 @@
     const chatbotMessages =
 
       document.getElementById("mdh-chatbot-messages");
- 
+    
+    const chatbotWelcome = document.getElementById("mdh-chatbot-welcome");
+    
     const chatbotInput =
 
       document.getElementById("mdh-chatbot-input");
- 
+    
+    
+
     const chatbotSend =
 
       document.getElementById("mdh-chatbot-send");
@@ -410,6 +410,32 @@
       return bookStackUserRequest;
 
     }
+
+
+    async function updateWelcomeMessage() {
+  try {
+    const bookStackUser =
+      await getBookStackUser();
+ 
+    chatbotWelcome.textContent =
+      "Hello " +
+      bookStackUser.name +
+      "! How can I help you today?";
+  } catch (error) {
+    chatbotWelcome.textContent =
+      "Hello! How can I help you today?";
+ 
+    console.error(
+      "Could not load welcome username:",
+      error
+    );
+  }
+}
+  
+    
+
+
+
  
     /**
 
@@ -1781,6 +1807,8 @@
           langflowSessionId
 
         );
+
+        // webhook
  
         const response = await fetch(
 
@@ -1963,6 +1991,7 @@
       }
 
     }
+    updateWelcomeMessage();
  
     /*
 

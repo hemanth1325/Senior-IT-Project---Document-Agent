@@ -1,2 +1,2 @@
-FROM langflowai/langflow:latest
+FROM langflowai/langflow:1.9.2
 RUN pip install langfuse

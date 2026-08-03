@@ -62,12 +62,16 @@
                 aria-label="Close chatbot"
 >
 
-                ×
+                
 </button>
 </div>
 </div>
  
           <div id="mdh-chatbot-messages">
+<div id="mdh-chatbot-welcome" class="mdh-message mdh-message-bot">
+
+              Hello! I am your MDH BookStack Student Assistant.
+              Ask me about programs, campus information,
 <div class="mdh-message mdh-message-bot">
 
               Hello! I am your MDH BookStack Student Assistant.
@@ -120,9 +124,11 @@
     `;
  
     document.body.insertAdjacentHTML(
+      "beforeend",
 
       "beforeend",
 
+ 450fc703e67fc6760c86b157214b332b944b9fa5
       chatbotHtml
 
     );
@@ -136,7 +142,6 @@
     const MDH_LANGFLOW_HOST =
 
       "https://langflow.mdhbookstack.duckdns.org";
- 
     const MDH_LANGFLOW_FLOW_ID =
 
       "41c61bca-3eb8-485a-b223-066567bedb75";
@@ -147,13 +152,7 @@
 
      *
 
-     * Important:
-
-     * A key stored in frontend JavaScript is visible in
-
-     * browser DevTools. For production, send requests
-
-     * through a BookStack backend proxy.
+     * 
 
      */
 
@@ -182,11 +181,20 @@
     const chatbotMessages =
 
       document.getElementById("mdh-chatbot-messages");
+    
+    const chatbotWelcome = document.getElementById("mdh-chatbot-welcome");
+    
+    const chatbotInput =
+
+      document.getElementById("mdh-chatbot-input");
+    
+    
+
  
     const chatbotInput =
 
       document.getElementById("mdh-chatbot-input");
- 
+  450fc703e67fc6760c86b157214b332b944b9fa5
     const chatbotSend =
 
       document.getElementById("mdh-chatbot-send");
@@ -203,10 +211,6 @@
  
     /*
 
-     * The BookStack user is cached only during the current
-
-     * page lifecycle.
-
      */
 
     let currentBookStackUser = null;
@@ -214,30 +218,6 @@
     let bookStackUserRequest = null;
  
     /**
-
-     * Get the logged-in BookStack user.
-
-     *
-
-     * Expected endpoint response:
-
-     *
-
-     * {
-
-     *   "authenticated": true,
-
-     *   "bookstack_session_id": "...",
-
-     *   "bookstack_user_id": 8,
-
-     *   "bookstack_user_name": "kandhi vaman reddy",
-
-     *   "bookstack_user_email":
-
-     *     "vakandhi@stud.mediadesign.de"
-
-     * }
 
      */
 
@@ -343,7 +323,12 @@
  
           const data = await response.json();
  
+<<<<<<< HEAD
+      /*    if (!data.authenticated) {
+=======
           if (!data.authenticated) {
+
+>>>>>>> 450fc703e67fc6760c86b157214b332b944b9fa5
 
             throw new Error(
 
@@ -351,6 +336,26 @@
 
             );
 
+<<<<<<< HEAD
+          }*/
+if (!data.authenticated) {
+  return {
+    id: null,
+    name: "guest",
+    email: ""
+  };
+}
+ 
+          if (
+  data.bookstack_user_id === undefined ||
+  data.bookstack_user_id === null
+) {
+  return {
+    id: null,
+    name: "guest",
+    email: ""
+  };
+}
           }
  
           if (
@@ -370,6 +375,7 @@
             );
 
           }
+ 450fc703e67fc6760c86b157214b332b944b9fa5
  
           /*
 
@@ -410,6 +416,33 @@
       return bookStackUserRequest;
 
     }
+
+
+    async function updateWelcomeMessage() {
+  try {
+    const bookStackUser =
+      await getBookStackUser();
+ 
+    chatbotWelcome.textContent =
+      "Hello " +
+      bookStackUser.name +
+      "! How can I help you today?";
+  } catch (error) {
+    chatbotWelcome.textContent =
+      "Hello! How can I help you today?";
+ 
+    console.error(
+      "Could not load welcome username:",
+      error
+    );
+  }
+}
+  
+    
+
+
+
+ 450fc703e67fc6760c86b157214b332b944b9fa5
  
     /**
 
@@ -462,11 +495,24 @@
 
         safeName + "-" +
 
+      bookStackUserId
+    ) {
+      const safeName = String(bookStackUserName).trim().toLowerCase().replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\-]/g, "") .replace(/\-+/g, "-") .replace(/^\-+|\-+$/g, "");
+      
+      return (
+
+        "mdh-bookstack-user-"+
+
         String(bookStackUserId)
 
       );
 
     }
+
+    function getLiteLLMUserId(bookStackUserId) {
+  return "bookstack-user-" + String(bookStackUserId);
+}
  
     /**
 
@@ -474,7 +520,7 @@
 
      * in Browser DevTools:
 
-     *
+     *+
 
      * F12 → Console
 
@@ -1734,6 +1780,10 @@
 
          */
 
+
+        /*const bookStackUser =
+
+          await getBookStackUser();*/
         const bookStackUser =
 
           await getBookStackUser();
@@ -1750,16 +1800,48 @@
 
          */
 
-        const langflowSessionId =
+
+        /*const langflowSessionId =
 
           getLangflowSessionId(
             bookStackUser.name,
+            bookStackUser.id
+
+          );*/
+
+       /*const liteLLMUserId =
+  getLiteLLMUserId(bookStackUser.id);*/
+
+const bookStackUser =
+  await getBookStackUser();
+
+const userName =
+  bookStackUser?.name || "guest";
+
+const userId =
+  bookStackUser?.id || null;
+
+const langflowSessionId =
+  userId
+    ? getLangflowSessionId(userName, userId)
+    : "guest";
+
+const liteLLMUserId =
+  userId
+    ? getLiteLLMUserId(userId)
+    : "guest";
+/*
+        const langflowSessionId =
+
+          getLangflowSessionId(
+
             bookStackUser.id
 
           );
  
         /*
 
+ 450fc703e67fc6760c86b157214b332b944b9fa5
          * Display details in:
 
          * F12 → Console
@@ -1812,7 +1894,9 @@
 
             },
  
+            /*body: JSON.stringify({
             body: JSON.stringify({
+ 450fc703e67fc6760c86b157214b332b944b9fa5
 
               input_type: "chat",
 
@@ -1832,6 +1916,25 @@
  
               stream: true
 
+            })*/
+          body: JSON.stringify({
+  		input_type: "chat",
+  	input_value: userText,
+  output_type: "chat",
+
+  session_id: langflowSessionId,
+
+  tweaks: {
+    "CustomComponent-otOXa": {
+      	bookstack_user_id: userId || "guest",
+      	bookstack_user_name: userName || "guest",
+      	litellm_user: liteLLMUserId || "guest",
+      	langflow_session_id: langflowSessionId || "guest"
+    	}
+  	},
+
+  	stream: true
+	})
             })
 
           }
@@ -1963,6 +2066,9 @@
       }
 
     }
+
+	updateWelcomeMessage();
+
  
     /*
 
@@ -2015,4 +2121,4 @@
   });
 
 })();
- 
+

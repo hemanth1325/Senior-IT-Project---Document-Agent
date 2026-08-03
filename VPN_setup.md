@@ -5,3 +5,72 @@ In the improved architecture, we separate the system into two zones: a public zo
 
 This architecture improves security because users can access the knowledge portal normally, while developers and administrators must connect through VPN before managing backend services.
 
+
+
+High-Level Architecture
+
+                              Internet
+                                  │
+                    mdhbookstack.duckdns.org
+                                  │
+                        ┌─────────▼─────────┐
+                        │       Caddy       │
+                        │ Reverse Proxy +   │
+                        │ SSL (HTTPS)       │
+                        └─────────┬─────────┘
+                                  │
+              ┌───────────────────┴───────────────────┐
+              │                                       │
+              │                                       │
+      Public Services                        VPN Protected Services
+              │                                       │
+      ┌───────▼────────┐                     ┌────────▼────────┐
+      │   BookStack    │                     │    WireGuard    │
+      │ Documentation  │                     │       VPN       │
+      └───────┬────────┘                     └────────┬────────┘
+              │                                       │
+              │                               VPN Authenticated Users
+              │                                       │
+              │                     ┌─────────────────┼─────────────────┐
+              │                     │                 │                 │
+              │              ┌──────▼─────┐   ┌──────▼─────┐   ┌──────▼─────┐
+              │              │ LangFlow   │   │ Portainer  │   │ Monitoring │
+              │              │ AI Workflows│   │ Docker Mgmt│   │ (Optional) │
+              │              └──────┬─────┘   └────────────┘   └────────────┘
+              │                     │
+              │                     │
+              │              ┌──────▼─────┐
+              │              │   Ollama   │
+              │              │ Local LLM  │
+              │              └──────┬─────┘
+              │                     │
+      ┌───────▼────────┐     ┌──────▼─────┐
+      │    MariaDB     │     │ PostgreSQL │
+      │  BookStack DB  │     │ LangFlow DB│
+      └────────────────┘     └────────────┘
+
+
+
+
+Docker Network Architecture
+
+                    Docker Host
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+        │                  │                  │
+   caddy network      bookstack-net      langflow-net
+        │                  │                  │
+        │                  │                  │
+     Caddy ──────► BookStack          LangFlow
+        │               │                 │
+        │            MariaDB         PostgreSQL
+        │
+        │
+   private-net
+        │
+        ├── WireGuard
+        ├── LangFlow
+        ├── Portainer
+        └── Ollama
+

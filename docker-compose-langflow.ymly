@@ -1,6 +1,6 @@
 services:
   langflow:
-    #image: langflowai/langflow:1.9.3
+    # image: langflowai/langflow:1.10.2
     build:
       context: .
       dockerfile: Dockerfile.langflow

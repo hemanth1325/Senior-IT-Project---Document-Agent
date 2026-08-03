@@ -1,18 +1,11 @@
 services:
   langflow:
-    #image: langflowai/langflow:1.9.3
-    build:
-      context: .
-      dockerfile: Dockerfile.langflow
-      
+    image: langflowai/langflow:latest
     container_name: langflow
     environment:
       - LANGFLOW_CONFIG_DIR=/app/langflow
       - LANGFLOW_DATABASE_URL=postgresql://langflow:langflow@postgres:5432/langflow
       - DO_NOT_TRACK=True
-      - LANGFLOW_SECRET_KEY=${LANGFLOW_SECRET_KEY}
-      - LANGFLOW_API_KEY_SOURCE=${LANGFLOW_API_KEY_SOURCE}
-      - LANGFLOW_API_KEY=${LANGFLOW_API_KEY}
     volumes:
       - langflow-data:/app/langflow
     restart: unless-stopped
@@ -23,7 +16,6 @@ services:
     networks:
       - langflow-net
       - caddy
-      - ai-net
     labels:
       caddy: langflow.mdhbookstack.duckdns.org
       caddy.reverse_proxy: "{{upstreams 7860}}"
@@ -49,7 +41,5 @@ networks:
   langflow-net:
     driver: bridge
   caddy:
-    external: true
-  ai-net:
     external: true
  

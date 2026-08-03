@@ -2056,4 +2056,4 @@ chatbotInput.addEventListener(
 );
 
 });
-});
+})();

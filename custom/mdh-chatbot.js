@@ -62,7 +62,7 @@
                 aria-label="Close chatbot"
 >
 
-                ×
+                
 </button>
 </div>
 </div>
@@ -72,6 +72,12 @@
 
               Hello! I am your MDH BookStack Student Assistant.
               Ask me about programs, campus information,
+<div class="mdh-message mdh-message-bot">
+
+              Hello! I am your MDH BookStack Student Assistant.
+
+              Ask me about programs, campus information,
+
               timetable, or documents.
 </div>
 </div>
@@ -119,6 +125,10 @@
  
     document.body.insertAdjacentHTML(
       "beforeend",
+
+      "beforeend",
+
+ 450fc703e67fc6760c86b157214b332b944b9fa5
       chatbotHtml
 
     );
@@ -132,7 +142,6 @@
     const MDH_LANGFLOW_HOST =
 
       "https://langflow.mdhbookstack.duckdns.org";
- 
     const MDH_LANGFLOW_FLOW_ID =
 
       "41c61bca-3eb8-485a-b223-066567bedb75";
@@ -143,13 +152,7 @@
 
      *
 
-     * Important:
-
-     * A key stored in frontend JavaScript is visible in
-
-     * browser DevTools. For production, send requests
-
-     * through a BookStack backend proxy.
+     * 
 
      */
 
@@ -187,6 +190,11 @@
     
     
 
+ 
+    const chatbotInput =
+
+      document.getElementById("mdh-chatbot-input");
+  450fc703e67fc6760c86b157214b332b944b9fa5
     const chatbotSend =
 
       document.getElementById("mdh-chatbot-send");
@@ -203,10 +211,6 @@
  
     /*
 
-     * The BookStack user is cached only during the current
-
-     * page lifecycle.
-
      */
 
     let currentBookStackUser = null;
@@ -214,22 +218,6 @@
     let bookStackUserRequest = null;
  
     /**
-
-     * Get the logged-in BookStack user.
-
-     *
-
-     * Expected endpoint response:
-
-     *
-
-     * {
-
-     *   "authenticated": true,
-
-     *   "bookstack_session_id": "...",
-
-     * }
 
      */
 
@@ -335,7 +323,12 @@
  
           const data = await response.json();
  
+<<<<<<< HEAD
       /*    if (!data.authenticated) {
+=======
+          if (!data.authenticated) {
+
+>>>>>>> 450fc703e67fc6760c86b157214b332b944b9fa5
 
             throw new Error(
 
@@ -343,6 +336,7 @@
 
             );
 
+<<<<<<< HEAD
           }*/
 if (!data.authenticated) {
   return {
@@ -362,6 +356,26 @@ if (!data.authenticated) {
     email: ""
   };
 }
+          }
+ 
+          if (
+
+            data.bookstack_user_id === undefined ||
+
+            data.bookstack_user_id === null
+
+          ) {
+
+            throw new Error(
+
+              "The /mdh/session-info endpoint did not " +
+
+              "return bookstack_user_id."
+
+            );
+
+          }
+ 450fc703e67fc6760c86b157214b332b944b9fa5
  
           /*
 
@@ -428,6 +442,7 @@ if (!data.authenticated) {
 
 
 
+ 450fc703e67fc6760c86b157214b332b944b9fa5
  
     /**
 
@@ -480,6 +495,14 @@ if (!data.authenticated) {
 
         safeName + "-" +
 
+      bookStackUserId
+
+    ) {
+
+      return (
+
+        "mdh-bookstack-user-"+
+
         String(bookStackUserId)
 
       );
@@ -496,7 +519,7 @@ if (!data.authenticated) {
 
      * in Browser DevTools:
 
-     *
+     *+
 
      * F12 → Console
 
@@ -1756,9 +1779,13 @@ if (!data.authenticated) {
 
          */
 
+
         /*const bookStackUser =
 
           await getBookStackUser();*/
+        const bookStackUser =
+
+          await getBookStackUser();
  
         /*
 
@@ -1771,6 +1798,7 @@ if (!data.authenticated) {
          * mdh-bookstack-user-8
 
          */
+
 
         /*const langflowSessionId =
 
@@ -1802,6 +1830,17 @@ const liteLLMUserId =
     ? getLiteLLMUserId(userId)
     : "guest";
 /*
+        const langflowSessionId =
+
+          getLangflowSessionId(
+
+            bookStackUser.id
+
+          );
+ 
+        /*
+
+ 450fc703e67fc6760c86b157214b332b944b9fa5
          * Display details in:
 
          * F12 → Console
@@ -1855,6 +1894,8 @@ const liteLLMUserId =
             },
  
             /*body: JSON.stringify({
+            body: JSON.stringify({
+ 450fc703e67fc6760c86b157214b332b944b9fa5
 
               input_type: "chat",
 
@@ -1866,7 +1907,7 @@ const liteLLMUserId =
 
                * This is the Langflow chat session ID.
 
-               
+               */
 
               session_id:
 
@@ -1893,6 +1934,7 @@ const liteLLMUserId =
 
   	stream: true
 	})
+            })
 
           }
 
@@ -2023,7 +2065,9 @@ const liteLLMUserId =
       }
 
     }
+
 	updateWelcomeMessage();
+
  
     /*
 
@@ -2076,4 +2120,4 @@ const liteLLMUserId =
   });
 
 })();
- 
+

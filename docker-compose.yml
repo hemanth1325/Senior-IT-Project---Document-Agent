@@ -51,9 +51,14 @@ services:
       - caddy
     labels:
       caddy: mdhbookstack.duckdns.org
-      caddy.reverse_proxy: "{{upstreams 80}}"
+      # caddy.reverse_proxy: "{{upstreams 80}}"
       caddy.handle_0: /mdh/chat
-      caddy.handle_0.0_reverse_proxy: mdh-chat-gateway:8000
+      # caddy.handle_0.0_reverse_proxy: mdh-chat-gateway:8000
+      caddy.handle_0.0_forward_auth: "{{upstreams 80}}"
+      caddy.handle_0.0_forward_auth.uri: /api/docs
+
+      # Only reached if BookStack says user is authenticated
+      caddy.handle_0.1_reverse_proxy: mdh-chat-gateway:8000
       caddy.handle_1: ""
       caddy.handle_1.0_reverse_proxy: "{{upstreams 80}}"
     restart: unless-stopped

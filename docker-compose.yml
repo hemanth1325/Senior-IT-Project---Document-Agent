@@ -137,6 +137,37 @@ services:
       - ai-net
     restart: unless-stopped
 
+    mdh-chat-gateway:
+    build:
+      context: ./chat-gateway
+      dockerfile: Dockerfile
+
+    container_name: mdh-chat-gateway
+
+    env_file:
+      - .env
+
+    environment:
+      - BOOKSTACK_SESSION_INFO_URL=https://mdhbookstack.duckdns.org/mdh/session-info
+      - BOOKSTACK_SESSION_COOKIE=bookstack_session
+      - BOOKSTACK_PUBLIC_ORIGIN=https://mdhbookstack.duckdns.org
+
+      - LANGFLOW_INTERNAL_URL=http://langflow:7860
+      - LANGFLOW_FLOW_ID=41c61bca-3eb8-485a-b223-066567bedb75
+      - MDH_CHAT_LANGFLOW_API_KEY=${MDH_CHAT_LANGFLOW_API_KEY}
+
+      - LANGFLOW_CUSTOM_COMPONENT_ID=CustomComponent-otOXa
+
+    depends_on:
+      - bookstack
+
+    networks:
+      - bookstack-net
+      - ai-net
+      - caddy
+
+    restart: unless-stopped
+
 #   # The Librarian (Chat Interface)
 #   # open-webui:
 #   #   image: ghcr.io/open-webui/open-webui:main

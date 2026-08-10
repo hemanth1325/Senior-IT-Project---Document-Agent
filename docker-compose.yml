@@ -52,6 +52,10 @@ services:
     labels:
       caddy: mdhbookstack.duckdns.org
       caddy.reverse_proxy: "{{upstreams 80}}"
+      caddy.handle_0: /mdh/chat
+      caddy.handle_0.0_reverse_proxy: mdh-chat-gateway:8000
+      caddy.handle_1: ""
+      caddy.handle_1.0_reverse_proxy: "{{upstreams 80}}"
     restart: unless-stopped
 
   # # The Brain (AI Engine)
@@ -137,7 +141,7 @@ services:
       - ai-net
     restart: unless-stopped
 
-    mdh-chat-gateway:
+  mdh-chat-gateway:
     build:
       context: ./chat-gateway
       dockerfile: Dockerfile
@@ -148,16 +152,23 @@ services:
       - .env
 
     environment:
-      - BOOKSTACK_SESSION_INFO_URL=https://mdhbookstack.duckdns.org/mdh/session-info
-      - BOOKSTACK_SESSION_COOKIE=bookstack_session
-      - BOOKSTACK_PUBLIC_ORIGIN=https://mdhbookstack.duckdns.org
+      # - BOOKSTACK_SESSION_INFO_URL=https://mdhbookstack.duckdns.org/mdh/session-info
+      # - BOOKSTACK_SESSION_COOKIE=bookstack_session
+      # - BOOKSTACK_PUBLIC_ORIGIN=https://mdhbookstack.duckdns.org
 
-      - LANGFLOW_INTERNAL_URL=http://langflow:7860
-      - LANGFLOW_FLOW_ID=41c61bca-3eb8-485a-b223-066567bedb75
-      - MDH_CHAT_LANGFLOW_API_KEY=${MDH_CHAT_LANGFLOW_API_KEY}
+      # - LANGFLOW_INTERNAL_URL=http://langflow:7860
+      # - LANGFLOW_FLOW_ID=41c61bca-3eb8-485a-b223-066567bedb75
+      # - MDH_CHAT_LANGFLOW_API_KEY=${LANGFLOW_API_KEY}
 
-      - LANGFLOW_CUSTOM_COMPONENT_ID=CustomComponent-otOXa
+      # - LANGFLOW_CUSTOM_COMPONENT_ID=CustomComponent-otOXa
+      BOOKSTACK_SESSION_INFO_URL: ${BOOKSTACK_SESSION_INFO_URL}
+      BOOKSTACK_SESSION_COOKIE: ${BOOKSTACK_SESSION_COOKIE}
+      BOOKSTACK_PUBLIC_ORIGIN: ${BOOKSTACK_PUBLIC_ORIGIN}
 
+      LANGFLOW_INTERNAL_URL: ${LANGFLOW_INTERNAL_URL}
+      LANGFLOW_FLOW_ID: ${LANGFLOW_FLOW_ID}
+      LANGFLOW_API_KEY: ${LANGFLOW_API_KEY}
+      LANGFLOW_CUSTOM_COMPONENT_ID: ${LANGFLOW_CUSTOM_COMPONENT_ID}
     depends_on:
       - bookstack
 

@@ -1,4 +1,5 @@
 import os
+import re
 from typing import AsyncIterator
 
 import httpx
@@ -34,7 +35,34 @@ def required_env(name: str) -> str:
         )
 
     return value
+def get_langflow_session_id(
+    user_name: str,
+    user_id: str
+) -> str:
 
+    safe_name = str(user_name).strip().lower()
+
+    safe_name = re.sub(
+        r"\s+",
+        "-",
+        safe_name
+    )
+
+    safe_name = re.sub(
+        r"[^a-z0-9\-]",
+        "",
+        safe_name
+    )
+
+    safe_name = re.sub(
+        r"-+",
+        "-",
+        safe_name
+    )
+
+    safe_name = safe_name.strip("-")
+
+    return f"{safe_name}-{user_id}"
 
 BOOKSTACK_SESSION_INFO_URL = required_env(
     "BOOKSTACK_SESSION_INFO_URL"
@@ -263,8 +291,11 @@ async def chat(
     # =================================================
 
     langflow_session_id = (
-        f"mdh-bookstack-user-{user['id']}"
+    get_langflow_session_id(
+        user["name"],
+        user["id"]
     )
+)
 
     litellm_user_id = (
         f"bookstack-user-{user['id']}"

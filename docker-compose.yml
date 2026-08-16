@@ -59,6 +59,8 @@ services:
 
       # Only reached if BookStack says user is authenticated
       caddy.handle_0.1_reverse_proxy: mdh-chat-gateway:8000
+        # Do NOT send BookStack cookies to chat gateway
+      caddy.handle_0.1_reverse_proxy.header_up: "-Cookie"
       caddy.handle_1: ""
       caddy.handle_1.0_reverse_proxy: "{{upstreams 80}}"
     restart: unless-stopped
